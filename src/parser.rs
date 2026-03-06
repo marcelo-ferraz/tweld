@@ -1,26 +1,49 @@
 use proc_macro2::TokenTree;
-use syn::{Ident, LitInt, LitStr, Token, parenthesized, token};
+use syn::{Ident, LitInt, LitStr, Token, parenthesized};
 use syn::parse::{Parse, ParseStream};
 
 use crate::models::{Modifier, TokenPart};
 
-
-pub struct NamingDsl {
+pub struct BrazeDsl {
     pub parts: Vec<TokenPart>
 }
 
-impl Parse for NamingDsl {
+impl Parse for BrazeDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parts = Vec::new();
         while !input.is_empty() {
+            println!("--> input:: {:?}", input);
+
             if !input.peek(syn::token::Paren) {
+                println!("paren");
                 let tt: TokenTree = input.parse()?;
                 parts.push(TokenPart::Plain(tt.to_string()));
+                continue;
             }
 
             let mod_content;
             parenthesized!(mod_content in input);
-            let target = mod_content.parse::<Ident>()?.to_string();
+
+            // debugging the tests  
+            println!("--> mod_content:: {:?}", mod_content);
+
+            let mut target = "".to_string();
+            
+            // recheck this
+            // if input.peek(syn::token::Paren) {
+            //     let sub_content;
+
+            //     parenthesized!(sub_content in mod_content);
+
+            //     while sub_content.peek(syn::Ident) {
+            //         target.push_str(&sub_content.parse::<Ident>()?.to_string());
+            //     }
+            // }
+    
+            while mod_content.peek(syn::Ident) {
+                target.push_str(&mod_content.parse::<Ident>()?.to_string());
+            }
+
             let mut modifiers = Vec::new();
 
             while mod_content.peek(Token![|]) {
@@ -32,6 +55,7 @@ impl Parse for NamingDsl {
                     "singular" => modifiers.push(Modifier::Singular),
                     "plural" => modifiers.push(Modifier::Plural),
                     "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
+                    "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
                     "pascal" | "pascalcase" | "uppercamelcase" => modifiers.push(Modifier::PascalCase),
                     "lowercamelcase" | "camelcase" | "camel" => modifiers.push(Modifier::LowerCamelCase),
                     "snakecase" | "snake" | "snekcase" | "snek" => modifiers.push(Modifier::SnakeCase),
@@ -40,7 +64,6 @@ impl Parse for NamingDsl {
                     "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
                     "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
                     "traincase" | "train" => modifiers.push(Modifier::TrainCase),
-                    "uppercase" | "upper" => modifiers.push(Modifier::Uppercase),
                     "replace" => {
                         let args;
                         syn::braced!(args in mod_content);
@@ -72,7 +95,7 @@ impl Parse for NamingDsl {
             parts.push(TokenPart::Modified(target, modifiers));
             
         }
-        Ok(NamingDsl { parts })
+        Ok(BrazeDsl { parts })
     }
 }
 
