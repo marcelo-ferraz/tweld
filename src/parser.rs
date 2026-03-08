@@ -12,10 +12,17 @@ impl Parse for BrazeDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parts = Vec::new();
         while !input.is_empty() {
-            println!("--> input:: {:?}", input);
+            // println!("--> input:: {:?}", input);
+
+            if input.peek(syn::LitStr) {
+                let from = input.parse::<LitStr>()?;
+                // println!("--> str literal {:?}", from);
+
+                continue;
+            }
 
             if !input.peek(syn::token::Paren) {
-                println!("paren");
+                // println!("paren");
                 let tt: TokenTree = input.parse()?;
                 parts.push(TokenPart::Plain(tt.to_string()));
                 continue;
@@ -25,7 +32,7 @@ impl Parse for BrazeDsl {
             parenthesized!(mod_content in input);
 
             // debugging the tests  
-            println!("--> mod_content:: {:?}", mod_content);
+            // println!("--> mod_content:: {:?}", mod_content);
 
             let mut target = "".to_string();
             
@@ -98,4 +105,3 @@ impl Parse for BrazeDsl {
         Ok(BrazeDsl { parts })
     }
 }
-

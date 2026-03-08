@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Modifier {
     Singular,
     Plural,
@@ -16,6 +17,7 @@ pub enum Modifier {
     // split
 }
 
+#[derive(Debug)]
 pub enum TokenPart {
     Plain(String),    
     // if it does have a split function I could change this to Vec<String>
