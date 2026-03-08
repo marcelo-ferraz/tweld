@@ -92,7 +92,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                     }                    
 
                     if inside_brackets {
-                        if curr_char == ' ' { continue; }
+                        // if curr_char == ' ' { continue; }
 
                         if curr_char == '(' {
                             println!("inside group");
@@ -117,10 +117,6 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                                 inside_modifiers = true;
                                 continue;
                             }
-                            
-                            // if !inside_modifiers {
-                            //     mod_target.push(curr_char);
-                            // }
                         }
                     }
 
@@ -130,7 +126,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
 
                     let word_terminator = peeked == &' ' || curr_char == ' ' 
                         || (inside_brackets && (curr_char == ']'))
-                        || (inside_group && (peeked == &'|' || curr_char == ')'))
+                        || (inside_group && (peeked == &'|' || curr_char == ')' || peeked == &')'))
                         || (inside_modifiers && (peeked == &'{'));
                     
                     if word_terminator {
@@ -165,10 +161,10 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                                 let mut left_word = String::new();
                                 let mut right_word = String::new();
                                 let mut left_side = true;
-                                
                                 while let Some(repl_char) = clean_chars.next() {
+                                    println!("replace char {repl_char}");
                                     if repl_char == '}' { break; }
-                                    if repl_char == ' ' || repl_char == '"' { continue; }
+                                    if repl_char == ' ' || repl_char == '"' || repl_char == '\'' { continue; }
 
                                     if repl_char == ',' { 
                                         left_side = false; 
@@ -181,7 +177,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                                         right_word.push(repl_char);
                                     }
                                 } 
-
+                                
                                 modifiers.push(Modifier::Replace(left_word, right_word));
                             }
                             "substr" | "substring" => {
@@ -232,7 +228,19 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                             }                                
                             w => {
                                 println!("rest w: '{w}', curr_char: '{curr_char}'");
-                                mod_target.push_str(&word);
+                                
+                                if inside_modifiers {
+                                    todo!() // this should return compilation error
+                                }
+
+                                if inside_group {
+                                    mod_target.push_str(&word);
+                                    mod_target.push(' ');
+                                    println!("mod_target: {mod_target}")
+                                } else {
+                                    parts.push(TokenPart::Plain(word.clone()));                                    
+                                }
+
                             }
                         }           
 
@@ -242,7 +250,18 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
            
                 println!("the end");
                 
-                if inside_brackets || inside_group || inside_modifiers {
+                if inside_brackets {
+                    println!("inside_brackets");
+                    todo!() // this should return compilation error
+                } 
+
+                if inside_group {
+                    println!("inside_group");
+                    todo!() // this should return compilation error
+                }                
+
+                if inside_modifiers {
+                    println!("inside_modifiers");
                     todo!() // this should return compilation error
                 }
 
@@ -271,24 +290,10 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
 }
 #[cfg(test)]
 mod tests {
-    use quote::quote; use proc_macro2::TokenStream; use super::scan_tokens;
-    #[test]    
-     fn should_chain_piped_modifiers2() {
-        let arguments = vec![
-            // (quote!{ "@[(get_ TestStruct | snek | camel ) ById]" }, "\"getTestInfoById\""), 
-            // "get_TestStructgetTestStructById"            
-            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | camel ) ById]" }, "\"getTestInfoById\""),
-            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | kebab ) - by-id]" }, "\"get-test-info-by-id\""),
-        ];
-
-        for (input, expected) in arguments {
-            
-            let result = scan_tokens(TokenStream::from(input));
-            let result = result.to_string(); 
-            assert_eq!(result, expected, "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",);
-        } 
-    }
-
+    use quote::quote; 
+    use proc_macro2::TokenStream; 
+    use super::scan_tokens;
+    
     #[allow(dead_code)]
     struct TestStruct {}
 
@@ -369,15 +374,14 @@ mod tests {
         assert_simple_transforms(arguments, "GET_TEST_STRUCT");
     }
 
-    // #[test]
-    #[allow(dead_code, reason = "will make sense once it allows for string interpolation")]
+    #[test]    
     fn should_transform_to_kebab_case() {
         let arguments = vec![
-            quote!{ @[(get_ TestStruct | kebabcase) ] },
-            quote!{ @[(get_ TestStruct | kebab) ] }, 
+            quote!{ "@[(get_ TestStruct | kebabcase) ]" },
+            quote!{ "@[(get_ TestStruct | kebab) ]" }, 
         ];
 
-        assert_simple_transforms(arguments, "get-test-struct");
+        assert_simple_transforms(arguments, "\"get-test-struct\"");
     }
 
     #[test]    
@@ -400,9 +404,9 @@ mod tests {
         let arguments = vec![
             (quote!{ @[(get__ TestStruct | titlecase) ] }, "GetTestStruct"),
             (quote!{ @[(get_ TestStruct | title) ] }, "GetTestStruct"),
-            // TODO: uncomment when it allows for string interpolation
-            // (quote!{ @[(get_ TestStruct | traincase) ] }, "Get-Test-Struct"),
-            // (quote!{ @[(get_ TestStruct | train) ] }, "Get-Test-Struct"),
+            
+            (quote!{ "@[(get_ TestStruct | traincase) ]" }, "\"Get-Test-Struct\""),
+            (quote!{ "@[(get_ TestStruct | train) ]" }, "\"Get-Test-Struct\""),
         ];
 
         for (input, expected) in arguments {
@@ -436,19 +440,16 @@ mod tests {
 
     #[test]    
     fn should_chain_piped_modifiers() {
-        let arguments = vec![
-            (quote!{ "@[(get_ TestStruct | replace{"Struct", "_Info"} | camel ) ById]" }, "getTestInfoById"),
-
-            // (quote!{ @[(get__ TestStruct | upper | snek) ] }, "get_teststruct"),
-            // (quote!{ @[(get__ TestStruct | snek | upper) ] }, "GET_TEST_STRUCT"),
-            // (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} | camel )] }, "getTestInfo"),
-            // (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} | camel ) ById] }, "getTestInfoById"),
+        let arguments = vec![            
+            (quote!{ @[(get__ TestStruct | upper | snek) ] }, "get_teststruct"),
+            (quote!{ @[(get__ TestStruct | snek | upper) ] }, "GET_TEST_STRUCT"),
+            (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} | camel )] }, "getTestInfo"),
+            (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} | camel ) ById] }, "getTestInfoById"),
             
-
-            // TODO: uncomment when it allows for string interpolation
-            // this is throwing an error: need to 
-            // (quote!{ @[(get_ TestStruct | traincase) ] }, "Get-Test-Struct"),
-            // (quote!{ @[(get_ TestStruct | train) ] }, "Get-Test-Struct"),
+            (quote!{ "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById]" }, "\"getTestInfoById\""),
+            (quote!{ "@[(get_ TestStruct | snek | camel ) ById]" }, "\"getTestStructById\""),             
+            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | camel ) ById]" }, "\"getTestInfoById\""),
+            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | kebab) - by -id]" }, "\"get-test-info-by-id\""),
         ];
 
         for (input, expected) in arguments {
