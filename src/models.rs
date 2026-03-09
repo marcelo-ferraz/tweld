@@ -19,6 +19,7 @@ pub enum Modifier {
 
 #[derive(Debug)]
 pub enum TokenPart {
+    Literal(String),    
     Plain(String),    
     // if it does have a split function I could change this to Vec<String>
     Modified(String, Vec<Modifier>),

@@ -24,7 +24,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                         
                         // Process the naming DSL inside the brackets
                         let dsl: BrazeDsl = parse2(bracket_group.stream()).expect("Invalid Braze welding DSL");
-                        let ident_name = build_string(dsl.parts);
+                        let ident_name = build_string(dsl.parts).replace(" ", "");
                         
                         output.push(TokenTree::Ident(format_ident!("{}", ident_name)));
                         continue;
@@ -47,7 +47,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                 output.push(TokenTree::Group(new_group));
             }
 
-            TokenTree::Literal(lit) => {
+            TokenTree::Literal(lit)  => {
                 // println!("maybe here (lit)? {:?}", &lit);                
                 
                 let tokens = quote::quote!(#lit);
@@ -75,6 +75,13 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                         println!("getting inside brackets");
                         inside_brackets = true;
                         clean_chars.next();
+
+                        if word.len() > 0 {
+                            println!("flushing word 1: `{word}`");
+                            parts.push(TokenPart::Literal(word.clone())); 
+                            word.clear();                        
+                        }
+                            
                         continue;
                     }
 
@@ -83,12 +90,16 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                         inside_brackets = false;
                         inside_group = false;
                         inside_modifiers = false;
-                        clean_chars.next();
+                        // clean_chars.next();
                         continue;
                     }
 
-                    if !inside_brackets || (curr_char != ' ' && curr_char != '(' && curr_char != '|' && curr_char != ')') {
-                        word.push(curr_char);                        
+                    if !inside_brackets {
+                        word.push(curr_char);
+                        println!("not inside brackets ch '{curr_char}', word '{word}'");
+                    } else if curr_char != ' ' && curr_char != '(' && curr_char != '|' && curr_char != ')' {
+                        word.push(curr_char);
+                        // println!("inside brackets ch '{curr_char}', word '{word}'");
                     }                    
 
                     if inside_brackets {
@@ -129,14 +140,9 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                         || (inside_group && (peeked == &'|' || curr_char == ')' || peeked == &')'))
                         || (inside_modifiers && (peeked == &'{'));
                     
-                    if word_terminator {
+                    if word_terminator && inside_brackets {
                         println!("word: '{word}'");                        
-                        // if !inside_modifiers {
-                        //     parts.push(TokenPart::Plain(word.clone())); 
-                        //     word.clear();
-                        //     continue;
-                        // } 
-
+   
                         match word.to_lowercase().trim() {
                             "" => continue,
                             "singular" => modifiers.push(Modifier::Singular),
@@ -152,19 +158,20 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                             "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
                             "traincase" | "train" => modifiers.push(Modifier::TrainCase),
                             "replace" => {
-                                if peeked != &'{' {
-                                    // throw compilation error
-                                }
-                                
-                                clean_chars.next();
-                                
                                 let mut left_word = String::new();
                                 let mut right_word = String::new();
                                 let mut left_side = true;
                                 while let Some(repl_char) = clean_chars.next() {
                                     println!("replace char {repl_char}");
                                     if repl_char == '}' { break; }
-                                    if repl_char == ' ' || repl_char == '"' || repl_char == '\'' { continue; }
+
+                                    let ignore_char = repl_char == ' ' 
+                                        || repl_char == '\t'
+                                        || repl_char == '{' 
+                                        || repl_char == '"' 
+                                        || repl_char == '\'';
+                                        
+                                    if ignore_char { continue; }
 
                                     if repl_char == ',' { 
                                         left_side = false; 
@@ -180,20 +187,14 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                                 
                                 modifiers.push(Modifier::Replace(left_word, right_word));
                             }
-                            "substr" | "substring" => {
-                                if peeked != &'{' {
-                                    // throw compilation error
-                                }
-                                
-                                clean_chars.next();
-                                
+                            "substr" | "substring" => {                                
                                 let mut left_word = String::new();
                                 let mut right_word = String::new();
                                 let mut left_side = true;
                                 
                                 while let Some(subs_char) = clean_chars.next() {
                                     if subs_char == '}' { break; }
-                                    if subs_char == ' ' { continue; }
+                                    if subs_char == ' ' || subs_char == '{' { continue; }
 
                                     if subs_char == ',' { 
                                         left_side = false; 
@@ -235,9 +236,10 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
 
                                 if inside_group {
                                     mod_target.push_str(&word);
-                                    mod_target.push(' ');
+                                    // mod_target.push(' ');
                                     println!("mod_target: {mod_target}")
                                 } else {
+                                    println!("flushing word 2: `{word}`");
                                     parts.push(TokenPart::Plain(word.clone()));                                    
                                 }
 
@@ -266,7 +268,8 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                 }
 
                 if word.len() > 0 {
-                    parts.push(TokenPart::Plain(word.clone()));
+                    println!("flushing word 3: `{word}`");
+                    parts.push(TokenPart::Literal(word.clone()));
                 }
        
                 println!("parts: {parts:?}");
@@ -293,7 +296,7 @@ mod tests {
     use quote::quote; 
     use proc_macro2::TokenStream; 
     use super::scan_tokens;
-    
+
     #[allow(dead_code)]
     struct TestStruct {}
 
@@ -400,21 +403,33 @@ mod tests {
     }
 
     #[test]    
-    fn should_transform_to_misc_cases() {
+    fn should_transform_to_title_case() {
         let arguments = vec![
-            (quote!{ @[(get__ TestStruct | titlecase) ] }, "GetTestStruct"),
-            (quote!{ @[(get_ TestStruct | title) ] }, "GetTestStruct"),
-            
-            (quote!{ "@[(get_ TestStruct | traincase) ]" }, "\"Get-Test-Struct\""),
-            (quote!{ "@[(get_ TestStruct | train) ]" }, "\"Get-Test-Struct\""),
+            quote!{ "@[(get__ TestStruct | titlecase) ]" },
+            quote!{ "@[(get_ TestStruct | title) ]" },
+            quote!{ "@[(get- TestStruct | title) ]" },
+            quote!{ "@[(get-- TestStruct | title) ]" },
+            quote!{ "@[(get--_ TestStruct | title) ]" },
+            quote!{ "@[(get _TestStruct | title) ]" },
+            quote!{ "@[(get -TestStruct | title) ]" },
         ];
 
-        for (input, expected) in arguments {
-            
-            let result = scan_tokens(TokenStream::from(input));
-            let result = result.to_string(); 
-            assert_eq!(result, expected, "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",);
-        } 
+        assert_simple_transforms(arguments, "\"Get Test Struct\"");
+    }
+
+    #[test]    
+    fn should_transform_to_train_case() {
+        let arguments = vec![
+            quote!{ "@[(get__ TestStruct | traincase) ]" },
+            quote!{ "@[(get_ TestStruct | train) ]" },
+            quote!{ "@[(get- TestStruct | train) ]" },
+            quote!{ "@[(get-- TestStruct | train) ]" },
+            quote!{ "@[(get--_ TestStruct | train) ]" },
+            quote!{ "@[(get _TestStruct | train) ]" },
+            quote!{ "@[(get -TestStruct | train) ]" },
+        ];
+
+        assert_simple_transforms(arguments, "\"Get-Test-Struct\"");
     }
 
     #[test]
@@ -438,6 +453,25 @@ mod tests {
         assert_simple_transforms(arguments, "get_TestItems");
     }
 
+    #[test]
+    fn should_apply_replace() {
+        let arguments = vec![                        
+            (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} )] }, "get_Test_Info"),
+            (quote!{ @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] }, "get_Test_InfoById"),
+            
+            (quote!{ "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" }, "\"get_Test_InfoById\""),
+            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" }, "\"get_Test_InfoById\""),
+            (quote!{ "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" }, "\"get_Test_Info-by-id\""),
+        ];
+
+        for (input, expected) in arguments {
+            
+            let result = scan_tokens(TokenStream::from(input));
+            let result = result.to_string(); 
+            assert_eq!(result, expected, "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",);
+        } 
+    }
+
     #[test]    
     fn should_chain_piped_modifiers() {
         let arguments = vec![            
@@ -459,4 +493,32 @@ mod tests {
             assert_eq!(result, expected, "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",);
         } 
     }
+
+    #[test]    
+    fn should_transform_multiple_groups_in_a_str() {
+        let arguments = vec![            
+            (
+                quote!{ 
+                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !" 
+                }, 
+                "\"The functions are diferent getTestStruct != getTestInfo !\""
+            ),
+            (
+                quote!{ 
+                    "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]" 
+                }, 
+                "\"getTestInfoById != get_TestStructsById\""
+            ),
+
+        ];
+
+        for (input, expected) in arguments {
+            
+            let result = scan_tokens(TokenStream::from(input));
+            let result = result.to_string(); 
+            assert_eq!(result, expected, "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",);
+        } 
+    }
+
+    
 }

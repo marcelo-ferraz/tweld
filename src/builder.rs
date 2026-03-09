@@ -3,10 +3,12 @@ use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToShoutyKebabCase, ToSho
 use crate::{models::{Modifier, TokenPart}, parser::BrazeDsl};
 
 pub fn build_string(parts: Vec<TokenPart>) -> String {
+    println!("parts: {parts:?}");
     let mut full = String::new();
     for part in parts {
         match part {
-            TokenPart::Plain(s) => full.push_str(&s),
+            TokenPart::Literal(value) => full.push_str(&value),
+            TokenPart::Plain(mut value) => { full.push_str(&value); value = value.replace(" ", "") },
             TokenPart::Modified(mut value, mods) => {
                 println!("modfied value `{value}`");
                 for m in mods {
@@ -41,11 +43,16 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                                 (Some(begin), Some(end)) => value = value[begin..end].to_string(),
                             }
                         }
-                    }
+                    }                    
                 }
                 full.push_str(&value);
             }
         }
     }
-    full.replace(' ', "")
+
+    // if keep_spaces {
+         return full;
+    // }  
+    
+    // full.replace(' ', "")    
 }
