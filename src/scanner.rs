@@ -1,3 +1,6 @@
+use std::iter::Peekable;
+use std::str::Chars;
+
 use proc_macro2::{Literal, TokenStream};
 use proc_macro2::{TokenTree, Delimiter, Group};
 use quote::{ToTokens, format_ident};
@@ -5,6 +8,13 @@ use syn::{LitStr, parse2};
 
 use crate::models::{Modifier, TokenPart};
 use crate::{builder::build_string, parser::BrazeDsl};
+
+enum StringParserState {
+    Idle,
+    InsideBrackets,
+    InsideGroup,
+    Modifiers
+}
 
 pub fn scan_tokens(input: TokenStream) -> TokenStream {
     let mut output = Vec::new();
@@ -61,9 +71,12 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                 
                 let mut word = String::new();
                 let mut clean_chars = clean_string.chars().peekable(); //.collect::<Vec<char>>();
-                let mut inside_brackets = false;
-                let mut inside_group = false;
-                let mut inside_modifiers = false;
+                // let mut inside_brackets = false;
+                // let mut inside_group = false;
+                // let mut inside_modifiers = false;
+
+                let mut state = StringParserState::Idle;
+
                 let mut modifiers = vec![];
                 let mut mod_target = String::new();
                 let mut parts: Vec<TokenPart> = vec![];
@@ -71,53 +84,77 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                 while let Some(curr_char) = clean_chars.next() {
                     println!("curr_char '{curr_char}'");
 
-                    if curr_char == '@' && clean_chars.peek() == Some(&'[') {
-                        println!("getting inside brackets");
-                        inside_brackets = true;
-                        clean_chars.next();
+                    match state {
+                        StringParserState::Idle => {
+                            if curr_char == '@' && clean_chars.peek() == Some(&'[') {
+                                println!("getting inside brackets");
+                                state = StringParserState::InsideBrackets;
+                                clean_chars.next();
 
-                        if word.len() > 0 {
-                            println!("flushing word 1: `{word}`");
-                            parts.push(TokenPart::Literal(word.clone())); 
-                            word.clear();                        
-                        }
+                                if word.len() > 0 {
+                                    println!("flushing word 1: `{word}`");
+                                    parts.push(TokenPart::Literal(word.clone())); 
+                                    word.clear();                        
+                                }
+                                    
+                                continue;
+                            }
+
+                            word.push(curr_char);
+                            println!("not inside brackets ch '{curr_char}', word '{word}'");
+                        },
+                        StringParserState::InsideBrackets => {
+                            if curr_char == ']' {
+                                println!("leaving brackets");
+                                state = StringParserState::Idle;
+                                parts.push(TokenPart::Plain(word.clone())); 
+                                word.clear(); 
+                                continue;
+                            }
+
+                            if curr_char == '(' {
+                                println!("entering group");
+                                state = StringParserState::InsideGroup;
+                                
+                                if word.len() > 0 {
+                                    println!("flushing word 2: `{word}`");
+                                    parts.push(TokenPart::Literal(word.clone())); 
+                                    word.clear();                        
+                                }
+                                continue;
+                            }
+
+                            if curr_char != ' ' {
+                                word.push(curr_char);
+                                // println!("inside brackets ch '{curr_char}', word '{word}'");
+                            }
+
+                            let word_terminator = 
+                                curr_char == ' ' || curr_char == ']';
                             
-                        continue;
-                    }
-
-                    if inside_brackets && curr_char == ']' {
-                        println!("leaving brackets");
-                        inside_brackets = false;
-                        inside_group = false;
-                        inside_modifiers = false;
-                        // clean_chars.next();
-                        continue;
-                    }
-
-                    if !inside_brackets {
-                        word.push(curr_char);
-                        println!("not inside brackets ch '{curr_char}', word '{word}'");
-                    } else if curr_char != ' ' && curr_char != '(' && curr_char != '|' && curr_char != ')' {
-                        word.push(curr_char);
-                        // println!("inside brackets ch '{curr_char}', word '{word}'");
-                    }                    
-
-                    if inside_brackets {
-                        // if curr_char == ' ' { continue; }
-
-                        if curr_char == '(' {
-                            println!("inside group");
-                            inside_group = true;
-                            continue;
-                        }
-
-                        if inside_group {
+                            if word_terminator && word.len() > 0 {
+                                parts.push(TokenPart::Plain(word.clone()));
+                                word.clear();
+                                continue;
+                            }
+                        },
+                        StringParserState::InsideGroup => {
                             if curr_char == ')' {
                                 println!("leaving group");
-                                parts.push(TokenPart::Modified(mod_target.clone(), modifiers));
 
-                                inside_group = false;
-                                inside_modifiers = false;
+                                if word.len() > 0 {
+                                    mod_target.push_str(&word);
+                                    word.clear();
+                                }
+
+                                if modifiers.len() > 0 {
+                                    parts.push(TokenPart::Modified(mod_target.clone(), modifiers));
+                                } else {
+                                    parts.push(TokenPart::Plain(mod_target.clone())); 
+                                }
+
+                                state = StringParserState::InsideBrackets;
+
                                 mod_target.clear();
                                 modifiers = vec![];
                                 word.clear();
@@ -125,144 +162,119 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                             }
                             
                             if curr_char == '|' {
-                                inside_modifiers = true;
+                                println!("entering modifiers");
+                                state = StringParserState::Modifiers;
+                                word.clear();
                                 continue;
                             }
-                        }
-                    }
+                                                        
 
-                    let Some(peeked) = clean_chars.peek() else {
-                        break;
-                    };
+                            if curr_char == ' ' {
+                                mod_target.push_str(&word);
+                                word.clear();
+                                continue;
+                            } 
 
-                    let word_terminator = peeked == &' ' || curr_char == ' ' 
-                        || (inside_brackets && (curr_char == ']'))
-                        || (inside_group && (peeked == &'|' || curr_char == ')' || peeked == &')'))
-                        || (inside_modifiers && (peeked == &'{'));
-                    
-                    if word_terminator && inside_brackets {
-                        println!("word: '{word}'");                        
-   
-                        match word.to_lowercase().trim() {
-                            "" => continue,
-                            "singular" => modifiers.push(Modifier::Singular),
-                            "plural" => modifiers.push(Modifier::Plural),
-                            "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
-                            "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
-                            "pascal" | "pascalcase" | "uppercamelcase" => modifiers.push(Modifier::PascalCase),
-                            "lowercamelcase" | "camelcase" | "camel" => modifiers.push(Modifier::LowerCamelCase),
-                            "snakecase" | "snake" | "snekcase" | "snek" => modifiers.push(Modifier::SnakeCase),
-                            "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
-                            "shoutysnakecase" | "shoutysnake"  | "shoutysnekcase"  | "shoutysnek" => modifiers.push(Modifier::ShoutySnakeCase),
-                            "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
-                            "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
-                            "traincase" | "train" => modifiers.push(Modifier::TrainCase),
-                            "replace" => {
-                                let mut left_word = String::new();
-                                let mut right_word = String::new();
-                                let mut left_side = true;
-                                while let Some(repl_char) = clean_chars.next() {
-                                    println!("replace char {repl_char}");
-                                    if repl_char == '}' { break; }
+                            word.push(curr_char);
+                        },
+                        StringParserState::Modifiers => {
+                            if curr_char == '|' { continue; }
+                            
+                            let word_terminator = curr_char == ' ' || curr_char == '{' || curr_char == ')';
+                            
+                            if !word_terminator {
+                                word.push(curr_char);
+                                println!("word: '{word}'");
+                            }
 
-                                    let ignore_char = repl_char == ' ' 
-                                        || repl_char == '\t'
-                                        || repl_char == '{' 
-                                        || repl_char == '"' 
-                                        || repl_char == '\'';
+                            if word_terminator {
+                                println!("word: '{word}'");
+        
+                                match word.to_lowercase().trim() {                                    
+                                    "singular" => modifiers.push(Modifier::Singular),
+                                    "plural" => modifiers.push(Modifier::Plural),
+                                    "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
+                                    "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
+                                    "pascal" | "pascalcase" | "uppercamelcase" => modifiers.push(Modifier::PascalCase),
+                                    "lowercamelcase" | "camelcase" | "camel" => modifiers.push(Modifier::LowerCamelCase),
+                                    "snakecase" | "snake" | "snekcase" | "snek" => modifiers.push(Modifier::SnakeCase),
+                                    "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
+                                    "shoutysnakecase" | "shoutysnake"  | "shoutysnekcase"  | "shoutysnek" => modifiers.push(Modifier::ShoutySnakeCase),
+                                    "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
+                                    "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
+                                    "traincase" | "train" => modifiers.push(Modifier::TrainCase),
+                                    "replace" => {
+                                        let (left_word, right_word) = 
+                                            extract_left_and_right(&mut clean_chars);
                                         
-                                    if ignore_char { continue; }
-
-                                    if repl_char == ',' { 
-                                        left_side = false; 
-                                        continue;
+                                        modifiers.push(Modifier::Replace(left_word, right_word));
                                     }
+                                    "substr" | "substring" => {                                
+                                        let (left_word, right_word) = 
+                                            extract_left_and_right(&mut clean_chars); 
+                                        let mut start_index: Option<usize> = None;
+                                        
+                                        if !left_word.is_empty() {
+                                            start_index = left_word.parse()
+                                                // TODO: refactor it to handle errors better
+                                                .and_then(|r| Ok(Some(r)))
+                                                .expect("modify to return a compilation error");
+                                        }
 
-                                    if left_side {
-                                        left_word.push(repl_char);
-                                    } else {
-                                        right_word.push(repl_char);
+                                        let mut end_index: Option<usize> = None;                                    
+                                        if !right_word.is_empty() {
+                                            end_index = right_word.parse()
+                                                // TODO: refactor it to handle errors better
+                                                .and_then(|r| Ok(Some(r)))
+                                                .expect("modify to return a compilation error");
+                                        }
+
+                                        modifiers.push(Modifier::Substr(start_index, end_index));
+                                    }                                
+                                    w => {
+                                        println!("rest w: '{w}', curr_char: '{curr_char}'");
+                                        
+                                        // unknown modifier
+                                        // todo!() // this should return compilation error
                                     }
-                                } 
-                                
-                                modifiers.push(Modifier::Replace(left_word, right_word));
+                                }           
+
+                                word.clear();
                             }
-                            "substr" | "substring" => {                                
-                                let mut left_word = String::new();
-                                let mut right_word = String::new();
-                                let mut left_side = true;
-                                
-                                while let Some(subs_char) = clean_chars.next() {
-                                    if subs_char == '}' { break; }
-                                    if subs_char == ' ' || subs_char == '{' { continue; }
 
-                                    if subs_char == ',' { 
-                                        left_side = false; 
-                                        continue;
-                                    }
+                            if curr_char == ')' {
+                                println!("leaving group");
 
-                                    if left_side {
-                                        left_word.push(subs_char);
-                                    } else {
-                                        right_word.push(subs_char);
-                                    }
-                                } 
-
-                                let mut start_index: Option<usize> = None;
-                                
-                                if !left_word.is_empty() {
-                                    start_index = left_word.parse()
-                                        // TODO: refactor it to handle errors better
-                                        .and_then(|r| Ok(Some(r)))
-                                        .expect("modify to return a compilation error");
-                                }
-
-                                let mut end_index: Option<usize> = None;                                    
-                                if !right_word.is_empty() {
-                                    end_index = right_word.parse()
-                                        // TODO: refactor it to handle errors better
-                                        .and_then(|r| Ok(Some(r)))
-                                        .expect("modify to return a compilation error");
-                                }
-
-                                modifiers.push(Modifier::Substr(start_index, end_index));
-                            }                                
-                            w => {
-                                println!("rest w: '{w}', curr_char: '{curr_char}'");
-                                
-                                if inside_modifiers {
-                                    todo!() // this should return compilation error
-                                }
-
-                                if inside_group {
-                                    mod_target.push_str(&word);
-                                    // mod_target.push(' ');
-                                    println!("mod_target: {mod_target}")
+                                if modifiers.len() > 0 {
+                                    parts.push(TokenPart::Modified(mod_target.clone(), modifiers));
                                 } else {
-                                    println!("flushing word 2: `{word}`");
-                                    parts.push(TokenPart::Plain(word.clone()));                                    
+                                    parts.push(TokenPart::Plain(mod_target.clone())); 
                                 }
 
-                            }
-                        }           
+                                state = StringParserState::InsideBrackets;
 
-                        word.clear();
-                    }
+                                mod_target.clear();
+                                modifiers = vec![];
+                                word.clear();
+                                continue;
+                            }
+                        },
+                    }               
                 }
            
                 println!("the end");
                 
-                if inside_brackets {
+                if let StringParserState::InsideBrackets = state {
                     println!("inside_brackets");
                     todo!() // this should return compilation error
                 } 
 
-                if inside_group {
+                if let StringParserState::InsideGroup = state {
                     println!("inside_group");
                     todo!() // this should return compilation error
                 }                
 
-                if inside_modifiers {
+                if let StringParserState::Modifiers = state {
                     println!("inside_modifiers");
                     todo!() // this should return compilation error
                 }
@@ -291,17 +303,57 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
     }
     TokenStream::from_iter(output)
 }
+
+fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, String) {
+    let mut left_side: bool = true;
+    let mut left_word= String::new();
+    let mut right_word = String::new();
+
+    while let Some(char) = clean_chars.next() {
+        if char == '}' { break; }
+    
+        let ignore_char = char == ' ' 
+            || char == '\t'
+            || char == '{' 
+            || char == '"' 
+            || char == '\''
+            || char == '\'';
+        
+        if ignore_char { continue; }
+
+        if char == ',' { 
+            left_side = false; 
+            continue;
+        }
+
+        if left_side {
+            left_word.push(char);
+        } else {
+            right_word.push(char);
+        }
+    }
+
+    (left_word, right_word)
+}
+
 #[cfg(test)]
-mod tests {
-    use quote::quote; 
-    use proc_macro2::TokenStream; 
-    use super::scan_tokens;
+mod tests {    use quote::quote;     use proc_macro2::TokenStream;     use super::scan_tokens;
+
+    #[test]
+    fn should_transform_to_singular2() {
+        let arguments = vec![
+            quote!{ "@[(get_ TestItems | replace{'est', 'urd'} | singular) ]" },
+        ];
+
+        assert_simple_transforms(arguments, "\"get_TurdItem\"");
+    }
 
     #[allow(dead_code)]
     struct TestStruct {}
 
     #[allow(dead_code)]
     struct TestItems (Vec<i64>);
+
 
     fn assert_simple_transforms(arguments: Vec<TokenStream>, expected: &str) {
         for input in arguments {
@@ -505,10 +557,16 @@ mod tests {
             ),
             (
                 quote!{ 
-                    "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]" 
+                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !" 
                 }, 
-                "\"getTestInfoById != get_TestStructsById\""
+                "\"The functions are diferent getTestStruct != getTestInfo !\""
             ),
+            // (
+            //     quote!{ 
+            //         "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]" 
+            //     }, 
+            //     "\"getTestInfoById != get_TestStructsById\""
+            // ),
 
         ];
 
