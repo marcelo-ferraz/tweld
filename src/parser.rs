@@ -5,7 +5,7 @@ use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitInt, LitStr, Token, parenthesized};
 
-use crate::models::{Modifier, StringParserError, TokenPart};
+use crate::models::{Modifier, StringParserError, StringParserState, TokenPart};
 
 pub struct BrazeDsl {
     pub parts: Vec<TokenPart>,
@@ -123,12 +123,6 @@ impl Parse for BrazeDsl {
     }
 }
 
-enum StringParserState {
-    Idle,
-    InsideBrackets,
-    InsideGroup,
-    Modifiers
-}
 
 fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, String) {
     let mut left_side: bool = true;

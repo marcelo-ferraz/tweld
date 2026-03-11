@@ -9,23 +9,17 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
         match part {
             TokenPart::Literal(value) => full.push_str(&value),
             TokenPart::Plain(mut value) => { full.push_str(&value); value = value.replace(" ", "") },
-            TokenPart::Modified(mut value, mods) => {
-                println!("modfied value `{value}`");
-                for m in mods {
-                    match m {
+            TokenPart::Modified(mut value, modifiers) => {
+                println!("modified value `{value}`");
+                for modified in modifiers {
+                    match modified {
                         Modifier::Singular => { if value.ends_with('s') { value.pop(); } },
                         Modifier::Plural => { if !value.ends_with('s') { value.push_str("s"); } },
                         Modifier::Lowercase => value = value.to_lowercase(),
                         Modifier::Uppercase => value = value.to_uppercase(),
                         Modifier::PascalCase => value = value.to_pascal_case(),
-                        Modifier::LowerCamelCase => {
-                            value = value.to_lower_camel_case();
-                            println!("camel: {value}");
-                        },
-                        Modifier::SnakeCase => { 
-                            value = value.to_snake_case();
-                            println!("snek: {value}");
-                        },
+                        Modifier::LowerCamelCase => value = value.to_lower_camel_case(),
+                        Modifier::SnakeCase => value = value.to_snake_case(),
                         Modifier::KebabCase => value = value.to_kebab_case(),
                         Modifier::ShoutySnakeCase => value = value.to_shouty_snake_case(),
                         Modifier::TitleCase => value = value.to_title_case(),
@@ -35,13 +29,10 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                             value = value.replace(&from, &to);
                             println!("repl: {value} args: {from} | {to}");
                         },
-                        Modifier::Substr(begin, end) => {
-                            match (begin, end) {
-                                (None, None) => value = value[..].to_string(),
-                                (None, Some(end)) => value = value[0..end].to_string(),
-                                (Some(begin), None) => value = value[begin..value.len()].to_string(),
-                                (Some(begin), Some(end)) => value = value[begin..end].to_string(),
-                            }
+                        Modifier::Substr(start, end) => {
+                            let start = start.unwrap_or(0);
+                            let end =  end.unwrap_or(value.len());
+                            value = value[start..end].to_string()                            
                         }
                     }                    
                 }
@@ -50,9 +41,5 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
         }
     }
 
-    // if keep_spaces {
-         return full;
-    // }  
-    
-    // full.replace(' ', "")    
+    return full;
 }

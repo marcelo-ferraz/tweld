@@ -27,6 +27,13 @@ pub enum TokenPart {
     Modified(String, Vec<Modifier>),
 }
 
+pub enum StringParserState {
+    Idle,
+    InsideBrackets,
+    InsideGroup,
+    Modifiers
+}
+
 #[derive(Error, Debug)]
 pub enum StringParserError {
     #[error("Unknown modifier: {0}!")]
