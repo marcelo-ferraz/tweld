@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 #[derive(Debug)]
 pub enum Modifier {
     Singular,
@@ -19,7 +21,32 @@ pub enum Modifier {
 
 #[derive(Debug)]
 pub enum TokenPart {
+    Literal(String),    
     Plain(String),    
     // if it does have a split function I could change this to Vec<String>
     Modified(String, Vec<Modifier>),
+}
+
+pub enum StringParserState {
+    Idle,
+    InsideBrackets,
+    InsideGroup,
+    Modifiers
+}
+
+#[derive(Error, Debug)]
+pub enum StringParserError {
+    #[error("Unknown modifier: {0}!")]
+    UnknownModifier(String),
+    #[error("Brackets were not closed!")]
+    OpenBrackets,
+    #[error("Group was left open!")]
+    OpenGroup,
+    #[error("Modifiers section is unfinished!")]
+    UnfinishModifiers,
+    #[error("The value for '{name:?}' is not a number ('{value}')!")]
+    NaNParam{
+        name: &'static str, 
+        value: String        
+    },
 }

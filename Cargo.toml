@@ -1,13 +1,18 @@
 [package]
-name = "smol-forge"
-version = "0.1.0"
+name = "tweld"
+version = "0.2.1-alpha.nu-str-eng"
 edition = "2024"
+authors = ["npb"]
+description = "Dynamic identifier generation for Rust macros. Weld provides a flexible @[] syntax to \"fuse\" strings, case-conversions, and logic directly into your generated source code."
+repository = "https://github.com/marcelo-ferraz/tweld"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 syn = "2.0.117"
 quote = "1.0.44"
 proc-macro2 = "1.0.106"
 heck = "0.5.0"
+thiserror = "2.0.18"
 
 [lib]
 proc-macro = true
