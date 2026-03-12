@@ -2,6 +2,7 @@ mod models;
 mod parser;
 mod builder;
 mod scanner;
+mod tests;
 
 extern crate proc_macro;
 
