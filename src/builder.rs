@@ -1,6 +1,6 @@
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToShoutyKebabCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToTrainCase}; 
 
-use crate::{models::{Modifier, TokenPart}, parser::BrazeDsl};
+use crate::{models::{Modifier, TokenPart}, parser::TweldDsl};
 
 pub fn build_string(parts: Vec<TokenPart>) -> String {
     println!("parts: {parts:?}");
@@ -25,10 +25,7 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                         Modifier::TitleCase => value = value.to_title_case(),
                         Modifier::ShoutyKebabCase => value = value.to_shouty_kebab_case(),
                         Modifier::TrainCase => value = value.to_train_case(),
-                        Modifier::Replace(from, to) => {
-                            value = value.replace(&from, &to);
-                            println!("repl: {value} args: {from} | {to}");
-                        },
+                        Modifier::Replace(from, to) => value = value.replace(&from, &to),
                         Modifier::Substr(start, end) => {
                             let start = start.unwrap_or(0);
                             let end =  end.unwrap_or(value.len());

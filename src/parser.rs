@@ -7,23 +7,14 @@ use syn::{Ident, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserError, StringParserState, TokenPart};
 
-pub struct BrazeDsl {
+pub struct TweldDsl {
     pub parts: Vec<TokenPart>,
 }
 
-impl Parse for BrazeDsl {
+impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parts = Vec::new();
         while !input.is_empty() {
-            // println!("--> input:: {:?}", input);
-
-            if input.peek(syn::LitStr) {
-                let from = input.parse::<LitStr>()?;
-                // println!("--> str literal {:?}", from);
-
-                continue;
-            }
-
             if !input.peek(syn::token::Paren) {
                 // println!("paren");
                 let tt: TokenTree = input.parse()?;
@@ -34,21 +25,7 @@ impl Parse for BrazeDsl {
             let mod_content;
             parenthesized!(mod_content in input);
 
-            // debugging the tests
-            // println!("--> mod_content:: {:?}", mod_content);
-
-            let mut target = "".to_string();
-
-            // recheck this
-            // if input.peek(syn::token::Paren) {
-            //     let sub_content;
-
-            //     parenthesized!(sub_content in mod_content);
-
-            //     while sub_content.peek(syn::Ident) {
-            //         target.push_str(&sub_content.parse::<Ident>()?.to_string());
-            //     }
-            // }
+            let mut target = String::new();
 
             while mod_content.peek(syn::Ident) {
                 target.push_str(&mod_content.parse::<Ident>()?.to_string());
@@ -119,7 +96,7 @@ impl Parse for BrazeDsl {
             }
             parts.push(TokenPart::Modified(target, modifiers));
         }
-        Ok(BrazeDsl { parts })
+        Ok(TweldDsl { parts })
     }
 }
 
@@ -157,7 +134,7 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
 }
 
 
-impl BrazeDsl {
+impl TweldDsl {
     pub fn parse_str(input: &str) -> Result<Self, StringParserError> {
         let mut word = String::new();
         let mut clean_chars = input.chars().peekable();
@@ -380,6 +357,6 @@ impl BrazeDsl {
             parts.push(TokenPart::Literal(word.clone()));
         }
 
-        Ok(BrazeDsl { parts })
+        Ok(TweldDsl { parts })
     }
 }
