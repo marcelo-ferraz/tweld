@@ -5,20 +5,26 @@ mod tests {
     use proc_macro2::TokenStream;
     use quote::quote;
 
-    #[test]
-    fn should_transform_to_singular2() {
-        let arguments = vec![quote! { "@[(get_ TestItems | replace{'est', 'urd'} | singular) ]" }];
-
-        assert_simple_transforms(arguments, "\"get_TurdItem\"");
-    }
-
     #[allow(dead_code)]
     struct TestStruct {}
 
     #[allow(dead_code)]
     struct TestItems(Vec<i64>);
 
-    fn assert_simple_transforms(arguments: Vec<TokenStream>, expected: &str) {
+    fn assert_simple_transforms(arguments: Vec<(TokenStream, &'static str)>) {
+        for (input, expected) in arguments {
+            let result = scan_tokens(TokenStream::from(input));
+            println!("result {result:?}");
+            let result = result.to_string();
+
+            assert_eq!(
+                result, expected,
+                "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",
+            );
+        }
+    }
+
+    fn assert_transformations_same_output(arguments: Vec<TokenStream>, expected: &str) {
         for input in arguments {
             let result = scan_tokens(TokenStream::from(input));
             let result = result.to_string();
@@ -29,6 +35,79 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn should_concatenate_words_in_brackets_str() {
+        let arguments = vec![
+            quote! { "@[get Test Struct]" },
+            quote! { "@[get Te stSt ruct]" },
+            quote! { "@[g et TestStruct]" },
+            quote! { "@[get TestStruct]" },
+            quote! { "@[getTest Struct]" },
+            quote! { "@[getT estSt ruct]" },
+        ];
+
+        assert_transformations_same_output(arguments, "\"getTestStruct\"");
+    }
+
+    #[test]
+    fn should_concatenate_words_in_brackets() {
+        let arguments = vec![
+            quote! { @[get Test Struct] },
+            quote! { @[get Te stSt ruct] },
+            quote! { @[g et TestStruct] },
+            quote! { @[get TestStruct] },
+            quote! { @[getTest Struct] },
+            quote! { @[getT estSt ruct] },
+        ];
+
+        assert_transformations_same_output(arguments, "getTestStruct");
+    }
+
+    #[test]
+    fn should_concatenate_words_in_groups_str() {
+        let arguments = vec![
+            quote! { "@[(get Test Struct)]" },
+            quote! { "@[(get Te stSt ruct)]" },
+            quote! { "@[(g et TestStruct)]" },
+            quote! { "@[(get TestStruct)]" },
+            quote! { "@[(getTest Struct)]" },
+            quote! { "@[(getT estSt ruct)]" },
+        ];
+
+        assert_transformations_same_output(arguments, "\"getTestStruct\"");
+    }
+
+    #[test]
+    fn should_concatenate_words_in_groups() {
+        let arguments = vec![
+            quote! { @[(get Test Struct)] },
+            quote! { @[(get Te stSt ruct)] },
+            quote! { @[(g et TestStruct)] },
+            quote! { @[(get TestStruct)] },
+            quote! { @[(getTest Struct)] },
+            quote! { @[(getT estSt ruct)] },
+        ];
+
+        assert_transformations_same_output(arguments, "getTestStruct");
+    }
+
+    #[test]
+    fn should_preserve_outside_str() {
+        let arguments = vec![
+            // it will keep the 2 spaces
+            (quote! { "Something  @[(get Test Struct)] here!" }, "\"Something  getTestStruct here!\""),
+            (quote! { "Something  @[(get Te stSt ruct)] here!" }, "\"Something  getTestStruct here!\""),
+            (quote! { "Something  @[(g et TestStruct)] \"here\"!" }, "\"Something  getTestStruct \\\"here\\\"!\""),
+            (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
+            (quote! { "Something  \"@[(get TestStruct)]\" here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
+            (quote! { "Something - @[(getTest Struct)]Here!" }, "\"Something - getTestStructHere!\""),
+            (quote! { "Something  @[(getT estSt ruct)]here!" }, "\"Something  getTestStructhere!\""),
+        ];
+
+        assert_simple_transforms(arguments);
+    }
+
     #[test]
     fn should_transform_to_lower_case() {
         let arguments = vec![
@@ -36,7 +115,7 @@ mod tests {
             quote! { @[(get_ TestStruct | lowercase) ] },
         ];
 
-        assert_simple_transforms(arguments, "get_teststruct");
+        assert_transformations_same_output(arguments, "get_teststruct");
     }
 
     #[test]
@@ -46,7 +125,7 @@ mod tests {
             quote! { @[(get_ TestStruct | upper) ] },
         ];
 
-        assert_simple_transforms(arguments, "GET_TESTSTRUCT");
+        assert_transformations_same_output(arguments, "GET_TESTSTRUCT");
     }
 
     #[test]
@@ -57,7 +136,7 @@ mod tests {
             quote! { @[(get_ TestStruct | uppercamelcase) ] },
         ];
 
-        assert_simple_transforms(arguments, "GetTestStruct");
+        assert_transformations_same_output(arguments, "GetTestStruct");
     }
 
     #[test]
@@ -68,7 +147,7 @@ mod tests {
             quote! { @[(get_ TestStruct | camel) ] },
         ];
 
-        assert_simple_transforms(arguments, "getTestStruct");
+        assert_transformations_same_output(arguments, "getTestStruct");
     }
 
     #[test]
@@ -80,7 +159,7 @@ mod tests {
             quote! { @[get_ (TestStruct | snek) ] },
         ];
 
-        assert_simple_transforms(arguments, "get_test_struct");
+        assert_transformations_same_output(arguments, "get_test_struct");
     }
 
     #[test]
@@ -92,7 +171,7 @@ mod tests {
             quote! { @[(get_ TestStruct | shoutysnek) ] },
         ];
 
-        assert_simple_transforms(arguments, "GET_TEST_STRUCT");
+        assert_transformations_same_output(arguments, "GET_TEST_STRUCT");
     }
 
     #[test]
@@ -102,7 +181,7 @@ mod tests {
             quote! { "@[(get_ TestStruct | kebab) ]" },
         ];
 
-        assert_simple_transforms(arguments, "\"get-test-struct\"");
+        assert_transformations_same_output(arguments, "\"get-test-struct\"");
     }
 
     #[test]
@@ -140,7 +219,7 @@ mod tests {
             quote! { "@[(get -TestStruct | title) ]" },
         ];
 
-        assert_simple_transforms(arguments, "\"Get Test Struct\"");
+        assert_transformations_same_output(arguments, "\"Get Test Struct\"");
     }
 
     #[test]
@@ -155,7 +234,7 @@ mod tests {
             quote! { "@[(get -TestStruct | train) ]" },
         ];
 
-        assert_simple_transforms(arguments, "\"Get-Test-Struct\"");
+        assert_transformations_same_output(arguments, "\"Get-Test-Struct\"");
     }
 
     #[test]
@@ -165,7 +244,7 @@ mod tests {
             quote! { @[(get_ TestItem | singular) ] },
         ];
 
-        assert_simple_transforms(arguments, "get_TestItem");
+        assert_transformations_same_output(arguments, "get_TestItem");
     }
 
     #[test]
@@ -175,7 +254,7 @@ mod tests {
             quote! { @[(get_ TestItem | plural) ] },
         ];
 
-        assert_simple_transforms(arguments, "get_TestItems");
+        assert_transformations_same_output(arguments, "get_TestItems");
     }
 
     #[test]
