@@ -101,8 +101,8 @@ mod tests {
             (quote! { "Something  @[(g et TestStruct)] \"here\"!" }, "\"Something  getTestStruct \\\"here\\\"!\""),
             (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
             (quote! { "Something  \"@[(get TestStruct)]\" here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
-            (quote! { "Something - @[(getTest Struct)]Here!" }, "\"Something - getTestStructHere!\""),
-            (quote! { "Something  @[(getT estSt ruct)]here!" }, "\"Something  getTestStructhere!\""),
+            (quote! { "Something - @[(getTest) (Struct)]Here!" }, "\"Something - getTestStructHere!\""),
+            (quote! { "Something  @[getT estSt ruct]here!" }, "\"Something  getTestStructhere!\""),
         ];
 
         assert_simple_transforms(arguments);
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn should_transform_to_lower_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | lower) ] },
+            quote! { @[(get_ Test | lower) (Struct | lower)] },
             quote! { @[(get_ TestStruct | lowercase) ] },
         ];
 
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn should_transform_to_kebab_case() {
         let arguments = vec![
-            quote! { "@[(get_ TestStruct | kebabcase) ]" },
+            quote! { "@[(get_ Test | kebab) - (Struct | kebabcase) ]" },
             quote! { "@[(get_ TestStruct | kebab) ]" },
         ];
 
