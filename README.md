@@ -1,7 +1,7 @@
 # Tweld
-(you can read it as **tiny-weld**, **token-weld**, or just **tweld**, I am just happy to be here)
-The tech description:
-Tweld is a procedural macro toolkit and naming DSL for Rust. It allows you to dynamically generate, modify, and compose identifiers directly within your Rust code using a clean, safe, and intuitive `@[]` syntax (hopefully).
+(you can read it as **tiny-weld**, **token-weld**, or just **tweld**, I am just happy to be here)    
+The tech description:    
+Tweld is a procedural macro toolkit and naming DSL for Rust. It allows you to dynamically generate, modify, and compose identifiers directly within your Rust code using a clean, safe, and intuitive `@[]` syntax (hopefully).    
 
 ```rust
 weld!("## @[(the idea | titlecase)]");
