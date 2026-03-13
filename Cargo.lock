@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "tweld"
-version = "0.2.2-alpha.gromming"
+version = "0.2.2-alpha.gromming.2"
 dependencies = [
  "heck",
  "proc-macro2",

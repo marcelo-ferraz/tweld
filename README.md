@@ -1,3 +1,4 @@
+
 # Tweld
 (you can read it as **tiny-weld**, **token-weld**, or just **tweld**, I am just happy to be here)    
    
@@ -44,4 +45,29 @@ weld! {
     }
 }
 ```
+## Modifiers
+While inside a group, you can apply a chain of modifiers, where each one will perform an operation on the previous result.
 
+### Simple modifiers:
+These are self explanatory, being `singular` and `plural` just the removal of the letter `'s'` from the last word.
+- `singular`,
+- `plural`,
+- `lower` , `lowercase`
+- `upper`,  `uppercase`
+### Casing style modifiers:
+Casing style modifiers use the crate [heck](https://crates.io/crates/heck). 
+- PascalCase: `pascal` , `pascalcase`, `uppercamelcase`
+- camelCase:`lowercamelcase`,  `camelcase`,  `camel`
+- snake_case`snakecase`,  `snake`,  `snekcase`,  `snek`
+- SHOUTY_SNAKE_CASE: `shoutysnakecase`,  `shoutysnake`,  `shoutysnekcase`,  `shoutysnek`
+- Title Case: `titlecase`,  `title`
+- kebab-case: `kebabcase`,  `kebab`
+- SHOUTY-KEBAB-CASE:`shoutykebabcase`,  `shoutykebab`  
+- Train-Case: `traincase`,  `train`
+### Advanced modifiers:
+
+#### `replace`
+ 
+#### `substr`,  `substring`
+
+ 
