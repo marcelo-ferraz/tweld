@@ -67,7 +67,7 @@ Casing style modifiers make use of the crate [heck](https://crates.io/crates/hec
 
 > **Limitations**
 > 
-> Given the nature of the syntax, when applied to tokens, as in the body of or signature of a function, per instance, some of these modifiers will behave a bit different
+> Given the nature of the syntax, when applied to tokens (as in the body or signature of a function, etc), some of these modifiers will behave a bit different.
 > - `kebabcase`, `shoutykebabcase`, and `traincase` won't work,
 > - `titlecase` will behave like `PascalCase`
 > 
@@ -79,14 +79,14 @@ This crate comes with some modifiers that offer more complex operations that can
 ---
 
 #### `replace`
- It replaces all non-overlapping occurrences of a `pattern`, with a replacement string.
+ It replaces all non-overlapping occurrences of a `pattern`, with a `replacement` string.
 ```rust
 // will render const a_small_ident = "";
 weld!(const @[(a long ident | replace{"long","small"}|snek)] = "";);
 ``` 
 ---
 #### `substr`,  `substring`
-This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied.
+This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied. Both indexes are optional.
 ```rust
 // will render const a_long_ident = "";
 weld!(const @[(a long identifier | substr{,9}|snek)] = "";);
