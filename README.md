@@ -2,15 +2,15 @@
 # Tweld
 (you can read it as **tiny-weld**, **token-weld**, or just **tweld**, I am just happy to be here)    
    
-Tweld is a procedural macro toolkit and naming DSL for Rust. It allows you to dynamically generate, modify, and compose identifiers directly within your Rust code using a clean, safe, and intuitive `@[]` syntax (hopefully).    
+Tweld is a procedural macro toolkit and naming DSL for Rust. It allows you to dynamically generate, modify, and compose identifiers directly within your Rust code using a clean, safe, and intuitive `@[]` syntax (hopefully). Because the parsing happens safely inside the macro, any syntax errors in your modifiers will point exactly to the broken line in your IDE (also hopefully).   
 
 ```rust
-weld!("## @[(the idea | titlecase)]");
+weld!("## @[(the idea | title)]");
 ```
 The name comes from idea of fusing tokens, to help when writing macros, or macros for your macros (which was my initial case).
 
 ## The `@[]` "interpolator"
-Anything inside the `@[]` "interpolator" will be fused together. 
+Anything inside the `@[]` "interpolator" will be fused together. You can use the `@[]` syntax inside structs, functions, trait implementations, or anywhere an identifier is expected, as well as in the content of string literal.
 
 >`"@[one - two]"`  will render `"one-two"`
 
@@ -55,19 +55,39 @@ These are self explanatory, being `singular` and `plural` just the removal of th
 - `lower` , `lowercase`
 - `upper`,  `uppercase`
 ### Casing style modifiers:
-Casing style modifiers use the crate [heck](https://crates.io/crates/heck). 
-- PascalCase: `pascal` , `pascalcase`, `uppercamelcase`
-- camelCase:`lowercamelcase`,  `camelcase`,  `camel`
-- snake_case`snakecase`,  `snake`,  `snekcase`,  `snek`
-- SHOUTY_SNAKE_CASE: `shoutysnakecase`,  `shoutysnake`,  `shoutysnekcase`,  `shoutysnek`
-- Title Case: `titlecase`,  `title`
-- kebab-case: `kebabcase`,  `kebab`
-- SHOUTY-KEBAB-CASE:`shoutykebabcase`,  `shoutykebab`  
-- Train-Case: `traincase`,  `train`
+Casing style modifiers make use of the crate [heck](https://crates.io/crates/heck).
+- **PascalCase**: `pascal` , `pascalcase`, `uppercamelcase`
+- **camelCase**:`lowercamelcase`,  `camelcase`,  `camel`
+- **snake_case**`snakecase`,  `snake`,  `snekcase`,  `snek`
+- **Title Case**: `titlecase`,  `title`
+- **kebab-case**: `kebabcase`,  `kebab`
+- **Train-Case**: `traincase`,  `train
+- **SHOUTY-KEBAB-CASE**:`shoutykebabcase`,  `shoutykebab`  
+- **SHOUTY_SNAKE_CASE**: `shoutysnakecase`,  `shoutysnake`,  `shoutysnekcase`,  `shoutysnek`
+
+> **Limitations**
+> 
+> Given the nature of the syntax, when applied to tokens, as in the body of or signature of a function, per instance, some of these modifiers will behave a bit different
+> - `kebabcase`, `shoutykebabcase`, and `traincase` won't work,
+> - `titlecase` will behave like `PascalCase`
+> 
+> When applied to string literals, they will all work as intended
+
 ### Advanced modifiers:
+This crate comes with some modifiers that offer more complex operations that can be pretty helpful, given the right context
+
+---
 
 #### `replace`
- 
+ It replaces all non-overlapping occurrences of a `pattern`, with a replacement string.
+```rust
+// will render const a_small_ident = "";
+weld!(const @[(a long ident | replace{"long","small"}|snek)] = "";);
+``` 
+---
 #### `substr`,  `substring`
-
- 
+This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied.
+```rust
+// will render const a_long_ident = "";
+weld!(const @[(a long identifier | substr{,9}|snek)] = "";);
+```  
