@@ -5,7 +5,7 @@ use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitInt, LitStr, Token, parenthesized};
 
-use crate::models::{Modifier, StringParserError, StringParserState, TokenPart};
+use crate::models::{Modifier, StringParserState, TokenPart};
 
 pub struct TweldDsl {
     pub parts: Vec<TokenPart>,
@@ -15,8 +15,7 @@ impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parts = Vec::new();
         while !input.is_empty() {
-            if !input.peek(syn::token::Paren) {
-                // println!("paren");
+            if !input.peek(syn::token::Paren) {                
                 let tt: TokenTree = input.parse()?;
                 parts.push(TokenPart::Plain(tt.to_string()));
                 continue;
@@ -135,9 +134,11 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
 
 
 impl TweldDsl {
-    pub fn parse_str(input: &str) -> Result<Self, StringParserError> {
+    pub fn parse_lit_str(input_lit: &LitStr) -> syn::Result<Self> {
+        let input_str: String = input_lit.value();
+
         let mut word = String::new();
-        let mut clean_chars = input.chars().peekable();
+        let mut clean_chars = input_str.chars().peekable();
 
         let mut state = StringParserState::Idle;
 
@@ -145,8 +146,21 @@ impl TweldDsl {
         let mut mod_target = String::new();
         let mut parts: Vec<TokenPart> = vec![];
 
+        let mut row_num = 1;
+        let mut col_num = 1;
         while let Some(curr_char) = clean_chars.next() {
             println!("curr_char '{curr_char}'");
+
+            if curr_char == '\n' {
+                row_num += 1;
+                col_num = 0;
+            } 
+
+            if curr_char == '\r' {                
+                continue;
+            }
+
+            col_num += 1;
 
             match state {
                 StringParserState::Idle => {
@@ -292,7 +306,10 @@ impl TweldDsl {
                                     start_index = left_word
                                         .parse()                                        
                                         .and_then(|r| Ok(Some(r)))
-                                        .map_err(|_| StringParserError::NaNParam{name: "start", value: left_word})?;
+                                        .map_err(|_| syn::Error::new(
+                                            input_lit.span(),
+                                            format!("The value for 'start' is not a number ('{left_word}')!")
+                                        ))?;
 
                                 }
 
@@ -300,14 +317,20 @@ impl TweldDsl {
                                 if !right_word.is_empty() {
                                     end_index = right_word
                                         .parse()                                        
-                                        .and_then(|r| Ok(Some(r)))
-                                        .map_err(|_| StringParserError::NaNParam{name: "end", value: right_word})?;
+                                        .and_then(|r| Ok(Some(r)))                                        
+                                        .map_err(|_| syn::Error::new(
+                                            input_lit.span(),
+                                            format!("The value for 'end' is not a number ('{right_word}')!")
+                                        ))?;
                                 }
 
                                 modifiers.push(Modifier::Substr(start_index, end_index));
                             }
-                            w => {
-                                return Err(StringParserError::UnknownModifier(w.to_string()));
+                            modifier => {                                
+                                return Err(syn::Error::new(
+                                    input_lit.span(),
+                                    format!("Unknown modifier {modifier} at line: {row_num}, col: {col_num} in the literal"),
+                                ));                                
                             }
                         }
 
@@ -338,17 +361,26 @@ impl TweldDsl {
 
         if let StringParserState::InsideBrackets = state {
             println!("inside_brackets");
-            return Err(StringParserError::OpenBrackets);
+            return Err(syn::Error::new(
+                input_lit.span(),
+                format!("Brackets were not closed! (line: {row_num}, col: {col_num} in the literal)"),
+            ));  
         }
 
         if let StringParserState::InsideGroup = state {
-            println!("inside_group");
-            return Err(StringParserError::OpenGroup);
+            println!("inside_group");            
+            return Err(syn::Error::new(
+                input_lit.span(),
+                format!("Group was left open! (line: {row_num}, col: {col_num} in the literal)"),
+            ));  
         }
 
         if let StringParserState::Modifiers = state {
             println!("inside_modifiers");
-            return Err(StringParserError::UnfinishModifiers);
+            return Err(syn::Error::new(
+                input_lit.span(),
+                format!("Modifiers are incomplete! (line: {row_num}, col: {col_num} in the literal)"),
+            ));  
 
         }
 

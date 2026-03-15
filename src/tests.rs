@@ -11,9 +11,9 @@ mod tests {
     #[allow(dead_code)]
     struct TestItems(Vec<i64>);
 
-    fn assert_simple_transforms(arguments: Vec<(TokenStream, &'static str)>) {
+    fn assert_transformations(arguments: Vec<(TokenStream, &'static str)>) {
         for (input, expected) in arguments {
-            let result = scan_tokens(TokenStream::from(input));
+            let result = scan_tokens(TokenStream::from(input)).unwrap();
             println!("result {result:?}");
             let result = result.to_string();
 
@@ -26,7 +26,7 @@ mod tests {
 
     fn assert_transformations_same_output(arguments: Vec<TokenStream>, expected: &str) {
         for input in arguments {
-            let result = scan_tokens(TokenStream::from(input));
+            let result = scan_tokens(TokenStream::from(input)).unwrap();
             let result = result.to_string();
             assert_eq!(
                 result, expected,
@@ -101,17 +101,17 @@ mod tests {
             (quote! { "Something  @[(g et TestStruct)] \"here\"!" }, "\"Something  getTestStruct \\\"here\\\"!\""),
             (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
             (quote! { "Something  \"@[(get TestStruct)]\" here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
-            (quote! { "Something - @[(getTest Struct)]Here!" }, "\"Something - getTestStructHere!\""),
-            (quote! { "Something  @[(getT estSt ruct)]here!" }, "\"Something  getTestStructhere!\""),
+            (quote! { "Something - @[(getTest) (Struct)]Here!" }, "\"Something - getTestStructHere!\""),
+            (quote! { "Something  @[getT estSt ruct]here!" }, "\"Something  getTestStructhere!\""),
         ];
 
-        assert_simple_transforms(arguments);
+        assert_transformations(arguments);
     }
 
     #[test]
     fn should_transform_to_lower_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | lower) ] },
+            quote! { @[(get_ Test | lower) (Struct | lower)] },
             quote! { @[(get_ TestStruct | lowercase) ] },
         ];
 
@@ -174,10 +174,20 @@ mod tests {
         assert_transformations_same_output(arguments, "GET_TEST_STRUCT");
     }
 
+    // #[test]
+    fn should_transform_to_kebab_case2() {
+        let arguments = vec![
+            // quote! { @[(get_ Test | snek) - (Struct | snek) ] },
+            quote! { @[(loop Struct| snek) ] },
+        ];
+
+        assert_transformations_same_output(arguments, "loop-struct");
+    }
+
     #[test]
     fn should_transform_to_kebab_case() {
         let arguments = vec![
-            quote! { "@[(get_ TestStruct | kebabcase) ]" },
+            quote! { "@[(get_ Test | kebab) - (Struct | kebabcase) ]" },
             quote! { "@[(get_ TestStruct | kebab) ]" },
         ];
 
@@ -198,7 +208,8 @@ mod tests {
         ];
 
         for (input, expected) in arguments {
-            let result = scan_tokens(TokenStream::from(input));
+            let result = 
+                scan_tokens(TokenStream::from(input)).unwrap();
             let result = result.to_string();
             assert_eq!(
                 result, expected,
@@ -282,14 +293,7 @@ mod tests {
             ),
         ];
 
-        for (input, expected) in arguments {
-            let result = scan_tokens(TokenStream::from(input));
-            let result = result.to_string();
-            assert_eq!(
-                result, expected,
-                "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",
-            );
-        }
+        assert_transformations(arguments);
     }
 
     #[test]
@@ -329,14 +333,7 @@ mod tests {
             ),
         ];
 
-        for (input, expected) in arguments {
-            let result = scan_tokens(TokenStream::from(input));
-            let result = result.to_string();
-            assert_eq!(
-                result, expected,
-                "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",
-            );
-        }
+        assert_transformations(arguments);
     }
 
     #[test]
@@ -362,13 +359,6 @@ mod tests {
             ),
         ];
 
-        for (input, expected) in arguments {
-            let result = scan_tokens(TokenStream::from(input));
-            let result = result.to_string();
-            assert_eq!(
-                result, expected,
-                "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",
-            );
-        }
+        assert_transformations(arguments);
     }
 }

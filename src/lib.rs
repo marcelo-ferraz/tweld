@@ -13,5 +13,7 @@ use crate::scanner::scan_tokens;
 
 #[proc_macro]
 pub fn weld(input: TokenStream) -> TokenStream {
-    scan_tokens(TokenStream2::from(input)).into()
+    scan_tokens(TokenStream2::from(input))
+        .unwrap_or_else(syn::Error::into_compile_error)        
+        .into()
 }
