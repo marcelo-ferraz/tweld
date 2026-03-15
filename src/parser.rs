@@ -1,5 +1,5 @@
 use std::iter::Peekable;
-use std::str::Chars;
+use std::str::{Chars, FromStr};
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
@@ -85,6 +85,13 @@ impl Parse for TweldDsl {
 
                         modifiers.push(Modifier::Substr(from, to));
                     }
+                    "reverse" | "rev" => modifiers.push(Modifier::Reverse),
+                    "repeat" | "rep" | "times" => todo!(),
+                    "split" => todo!(),
+                    "join" => todo!(),
+                    "padstart" | "padleft" | "padl" => todo!(),
+                    "padend" | "padright" | "padr" => todo!(),
+
                     _ => {
                         return Err(syn::Error::new(
                             mod_name.span(),
@@ -99,6 +106,33 @@ impl Parse for TweldDsl {
     }
 }
 
+fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &LitStr) -> syn::Result<(String, bool)> {
+    let mut word = String::new();
+        
+    while let Some(char) = clean_chars.next() {
+        if char == '}' { break; }
+    
+        let ignore_char = char == ' ' 
+            || char == '\t'
+            || char == '{'            
+            || char == ',';
+        
+        if ignore_char { continue; }
+        word.push(char);        
+    }
+
+    let double = word.chars().filter(|c| *c == '"').count();
+    let single = word.chars().filter(|c| *c == '\'').count();
+
+    if double % 2 != 0 || single % 2 != 0 {
+        return Err(syn::Error::new(
+            lit.span(),
+            format!("String badly formed for {modifier} {:?}", lit.span()),
+        ));
+    }
+
+    Ok((word, double > 0 || single > 0))
+}
 
 fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, String) {
     let mut left_side: bool = true;
@@ -112,7 +146,6 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
             || char == '\t'
             || char == '{' 
             || char == '"' 
-            || char == '\''
             || char == '\'';
         
         if ignore_char { continue; }
@@ -132,6 +165,13 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
     (left_word, right_word)
 }
 
+fn try_num<T: FromStr>(input: &str, field: &str, parent: &LitStr) -> syn::Result<T> {
+    input.parse::<T>()        
+        .map_err(|_| syn::Error::new(
+            parent.span(), 
+            format!("The value for '{field}' is not a number ('{input}')!")
+        ))
+}
 
 impl TweldDsl {
     pub fn parse_lit_str(input_lit: &LitStr) -> syn::Result<Self> {
@@ -199,6 +239,14 @@ impl TweldDsl {
                             parts.push(TokenPart::Literal(word.clone()));
                             word.clear();
                         }
+                        continue;
+                    }
+
+                    if curr_char == '|' {
+                        println!("entering modifiers");
+                        state = StringParserState::Modifiers;
+                        mod_target.push_str(&word);                            
+                        word.clear();
                         continue;
                     }
 
@@ -303,29 +351,104 @@ impl TweldDsl {
                                 let mut start_index: Option<usize> = None;
 
                                 if !left_word.is_empty() {
-                                    start_index = left_word
-                                        .parse()                                        
-                                        .and_then(|r| Ok(Some(r)))
-                                        .map_err(|_| syn::Error::new(
-                                            input_lit.span(),
-                                            format!("The value for 'start' is not a number ('{left_word}')!")
-                                        ))?;
-
+                                    let val = try_num(&left_word, "start", input_lit)?;
+                                    start_index = Some(val);
                                 }
 
                                 let mut end_index: Option<usize> = None;
                                 if !right_word.is_empty() {
-                                    end_index = right_word
-                                        .parse()                                        
-                                        .and_then(|r| Ok(Some(r)))                                        
-                                        .map_err(|_| syn::Error::new(
-                                            input_lit.span(),
-                                            format!("The value for 'end' is not a number ('{right_word}')!")
-                                        ))?;
+                                    let val = try_num(&right_word, "end", input_lit)?;                                    
+                                    end_index = Some(val)
                                 }
 
                                 modifiers.push(Modifier::Substr(start_index, end_index));
+                            }                            
+                            "reverse" | "rev" => modifiers.push(Modifier::Reverse),
+                            "repeat" | "rep" | "times" => {
+                                let (result, _)  = extract_word(&mut clean_chars, "split", input_lit)?;
+                                
+                                if result.is_empty() {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("No parameter was informed for {word} at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }
+                                
+                                let times = try_num(&word, "start", input_lit)?;
+
+                                modifiers.push(Modifier::SplitAt(times));
+                            },
+                            "split" => {
+                                let (result, is_str)  = extract_word(&mut clean_chars, "split", input_lit)?;
+                                
+                                if result.is_empty() {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("No parameter was informed for {word} at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }
+
+                                if is_str {
+                                    modifiers.push(Modifier::Split(result));
+                                    continue;
+                                }
+
+                                let mid = try_num(&result, "start", input_lit)?;
+
+                                modifiers.push(Modifier::SplitAt(mid));
                             }
+                            "join" => {
+                                let (result, _) = extract_word(&mut clean_chars, "join", input_lit)?;
+                                if result.is_empty() {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("No parameter was informed for join at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }
+                                modifiers.push(Modifier::Join(result));
+                            }
+                            "padstart" | "padleft" | "padl" => {
+                                let (left_word, right_word) =
+                                    extract_left_and_right(&mut clean_chars);
+                                let mut index = 0;
+                                if !left_word.is_empty() {
+                                    index = try_num(&left_word, "start", input_lit)?;
+                                }
+                                
+                                if index < 1 {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("The mid parameter needs to be more than 0 for {word} at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }
+
+                                if right_word.is_empty() {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("No parameter was informed for {word} at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }                                
+
+                                modifiers.push(Modifier::PadStart(index, right_word));
+                            }
+                            "padend" | "padright" | "padr" => {
+                                let (left_word, right_word) =
+                                    extract_left_and_right(&mut clean_chars);
+                                let mut index = 0;
+                                if !left_word.is_empty() {
+                                    index = try_num(&left_word, "start", input_lit)?;
+                                }
+                                
+                                if index < 1 {
+                                    return Err(syn::Error::new(
+                                        input_lit.span(),
+                                        format!("The mid parameter needs to be more than 0 for {word} at line: {row_num}, col: {col_num} in the literal"),
+                                    ));
+                                }
+
+                                modifiers.push(Modifier::PadEnd(index, right_word));
+                            }
+
                             modifier => {                                
                                 return Err(syn::Error::new(
                                     input_lit.span(),
@@ -337,8 +460,8 @@ impl TweldDsl {
                         word.clear();
                     }
 
-                    if curr_char == ')' {
-                        println!("leaving group");
+                    if curr_char == ')' || curr_char == ']' {
+                        println!("leaving modifiers");
 
                         if modifiers.len() > 0 {
                             parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
@@ -346,7 +469,11 @@ impl TweldDsl {
                             parts.push(TokenPart::Plain(mod_target.clone()));
                         }
 
-                        state = StringParserState::InsideBrackets;
+                        if curr_char == ')' {
+                            state = StringParserState::InsideBrackets;
+                        } else {
+                            state = StringParserState::Idle;
+                        }
 
                         mod_target.clear();
                         modifiers = vec![];
