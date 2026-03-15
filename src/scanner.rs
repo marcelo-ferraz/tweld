@@ -5,7 +5,7 @@ use syn::{LitStr, parse2};
 
 use crate::{builder::build_string, parser::TweldDsl};
 
-pub fn scan_tokens(input: TokenStream) -> TokenStream {
+pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
     let mut output = Vec::new();
     let mut tokens = input.into_iter().peekable();
 
@@ -16,20 +16,19 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
             TokenTree::Punct(ref p) if p.as_char() == '@' => {
                 // println!("maybe here (the @)? {p:?}");
                 if let Some(TokenTree::Group(grp)) = tokens.peek() {
+                    let span = grp.span();
                     if grp.delimiter() == Delimiter::Bracket {
                         // We found @[ ... ]! Consume the bracket group.
-                        let bracket_group = if let TokenTree::Group(grp) = tokens.next().unwrap() {
-                            grp
-                        } else {
-                            unreachable!()
+                        let Some(TokenTree::Group(bracket_group)) = tokens.next() else {
+                            return Err(syn::Error::new(
+                                span, "There was an error when consuming the bracket group!")
+                            );
                         };
+                                                
+                        let dsl: TweldDsl = parse2(bracket_group.stream())?;
+                        let identifier = build_string(dsl.parts).replace(" ", "");
 
-                        // Process the naming DSL inside the brackets
-                        let dsl: TweldDsl =
-                            parse2(bracket_group.stream()).expect("Invalid Braze welding DSL");
-                        let ident_name = build_string(dsl.parts).replace(" ", "");
-
-                        output.push(TokenTree::Ident(format_ident!("{}", ident_name)));
+                        output.push(TokenTree::Ident(format_ident!("{}", identifier)));
                         continue;
                     }
                 }
@@ -37,7 +36,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
             }
 
             TokenTree::Group(g) => {
-                let inner_expanded = scan_tokens(g.stream());
+                let inner_expanded = scan_tokens(g.stream())?;
                 let mut new_group = Group::new(g.delimiter(), inner_expanded);
                 new_group.set_span(g.span());
                 output.push(TokenTree::Group(new_group));
@@ -51,10 +50,7 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
                     continue;
                 };
 
-                let clean_string: String = lit_str.value();
-
-                let dsl = TweldDsl::parse_str(&clean_string)
-                    .expect("There was an error when parsing the string");
+                let dsl = TweldDsl::parse_lit_str(&lit_str)?;
 
                 println!("parts: {:?}", dsl.parts);
                 let result = build_string(dsl.parts);
@@ -72,5 +68,5 @@ pub fn scan_tokens(input: TokenStream) -> TokenStream {
             }
         }
     }
-    TokenStream::from_iter(output)
+    Ok(TokenStream::from_iter(output))
 }

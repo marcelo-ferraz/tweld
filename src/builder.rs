@@ -8,7 +8,7 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
     for part in parts {
         match part {
             TokenPart::Literal(value) => full.push_str(&value),
-            TokenPart::Plain(mut value) => { full.push_str(&value); value = value.replace(" ", "") },
+            TokenPart::Plain(value) => full.push_str(&value.replace(" ", "")),
             TokenPart::Modified(mut value, modifiers) => {
                 println!("modified value `{value}`");
                 for modified in modifiers {
