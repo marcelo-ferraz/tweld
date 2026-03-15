@@ -93,7 +93,7 @@ impl Parse for TweldDsl {
                     }
                 }
             }
-            parts.push(TokenPart::Modified(target, modifiers));
+            parts.push(TokenPart::Modified(vec![target], modifiers));
         }
         Ok(TweldDsl { parts })
     }
@@ -156,7 +156,7 @@ impl TweldDsl {
                 col_num = 0;
             } 
 
-            if curr_char == '\r' {                
+            if curr_char == '\r' {                 
                 continue;
             }
 
@@ -225,7 +225,7 @@ impl TweldDsl {
                         }
 
                         if modifiers.len() > 0 {
-                            parts.push(TokenPart::Modified(mod_target.clone(), modifiers));
+                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
                         } else {
                             parts.push(TokenPart::Plain(mod_target.clone()));
                         }
@@ -341,7 +341,7 @@ impl TweldDsl {
                         println!("leaving group");
 
                         if modifiers.len() > 0 {
-                            parts.push(TokenPart::Modified(mod_target.clone(), modifiers));
+                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
                         } else {
                             parts.push(TokenPart::Plain(mod_target.clone()));
                         }

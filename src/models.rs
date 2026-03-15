@@ -13,14 +13,21 @@ pub enum Modifier {
     ShoutyKebabCase,
     TrainCase,
     Replace(String, String),
-    Substr(Option<usize>, Option<usize>),    
+    Substr(Option<usize>, Option<usize>),
+    Reverse,
+    Repeat(usize),
+    Split(String),
+    SplitAt(usize),
+    Join(String),
+    PadStart(usize, String),
+    PadEnd(usize, String),
 }
 
 #[derive(Debug)]
 pub enum TokenPart {
     Literal(String),    
     Plain(String),    
-    Modified(String, Vec<Modifier>),
+    Modified(Vec<String>, Vec<Modifier>),
 }
 
 pub enum StringParserState {
