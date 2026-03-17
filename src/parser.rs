@@ -3,7 +3,7 @@ use std::str::{Chars, FromStr};
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitInt, LitStr, Token, parenthesized};
+use syn::{Ident, Lit, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserState, TokenPart};
 
@@ -86,11 +86,67 @@ impl Parse for TweldDsl {
                         modifiers.push(Modifier::Substr(from, to));
                     }
                     "reverse" | "rev" => modifiers.push(Modifier::Reverse),
-                    "repeat" | "rep" | "times" => todo!(),
-                    "split" => todo!(),
-                    "join" => todo!(),
-                    "padstart" | "padleft" | "padl" => todo!(),
-                    "padend" | "padright" | "padr" => todo!(),
+                    "repeat" | "rep" | "times" => {
+                        let args;
+                        syn::braced!(args in mod_content); 
+                        let times = args
+                            .parse::<LitInt>()
+                            .and_then(|val| val.base10_parse::<usize>())?;
+
+                        modifiers.push(Modifier::Repeat(times));
+                    },
+                    "split" => {
+                        let args;
+                        syn::braced!(args in mod_content);
+
+                        let lit: Lit = input.parse()?; // Consume the literal
+        
+                        match lit {
+                            Lit::Str(sep) => {
+                                modifiers.push(Modifier::Split(sep.value()));
+                            }
+                            Lit::Int(num) => {
+                                let mid = num.base10_parse::<usize>()?;
+                                modifiers.push(Modifier::SplitAt(mid));
+                            }
+                            _ =>  return Err(syn::Error::new(
+                                mod_name.span(),
+                                format!("Expected a string or integer literal {:?}", mod_name.span()),
+                            ))
+                        }                                                
+                    },
+                    "join" => {
+                        let args;
+                        syn::braced!(args in mod_content);
+                        let sep = args.parse::<LitStr>()?;                        
+                        modifiers.push(Modifier::Join(sep.value()));
+                    },
+                    "padstart" | "padleft" | "padl" => {
+                        let args;
+                        syn::braced!(args in mod_content);
+                        let size = args
+                            .parse::<LitInt>()
+                            .and_then(|val| val.base10_parse::<usize>())?;
+
+                        args.parse::<Token![,]>()?;
+
+                        let pad = args.parse::<LitStr>()?;
+
+                        modifiers.push(Modifier::PadStart(size, pad.value()));
+                    },
+                    "padend" | "padright" | "padr" => {
+                        let args;
+                        syn::braced!(args in mod_content);
+                        let size = args
+                            .parse::<LitInt>()
+                            .and_then(|val| val.base10_parse::<usize>())?;
+
+                        args.parse::<Token![,]>()?;
+
+                        let pad = args.parse::<LitStr>()?;
+
+                        modifiers.push(Modifier::PadEnd(size, pad.value()));
+                    },
 
                     _ => {
                         return Err(syn::Error::new(
