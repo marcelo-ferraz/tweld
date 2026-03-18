@@ -244,6 +244,9 @@ impl TweldDsl {
 
         let mut row_num = 1;
         let mut col_num = 1;
+
+        let mut space = false;
+
         while let Some(curr_char) = clean_chars.next() {
             println!("curr_char '{curr_char}'");
 
@@ -258,6 +261,11 @@ impl TweldDsl {
 
             col_num += 1;
 
+            if curr_char == ' ' {
+                println!("space!");
+                space = true;
+            }
+
             match state {
                 StringParserState::Idle => {
                     if curr_char == '@' && clean_chars.peek() == Some(&'[') {
@@ -269,6 +277,7 @@ impl TweldDsl {
                             println!("flushing word 1: `{word}`");
                             parts.push(TokenPart::Literal(word.clone()));
                             word.clear();
+                            space = false;
                         }
 
                         continue;
@@ -280,9 +289,19 @@ impl TweldDsl {
                 StringParserState::InsideBrackets => {
                     if curr_char == ']' {
                         println!("leaving brackets");
+
+                        if modifiers.len() > 0 {
+                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                        } else {
+                            parts.push(TokenPart::Plain(mod_target.clone()));
+                        }
+
                         state = StringParserState::Idle;
-                        parts.push(TokenPart::Plain(word.clone()));
+                        
+                        mod_target.clear();
+                        modifiers = vec![];
                         word.clear();
+                        space = false;
                         continue;
                     }
 
@@ -292,41 +311,44 @@ impl TweldDsl {
 
                         if word.len() > 0 {
                             println!("flushing word 2: `{word}`");
-                            parts.push(TokenPart::Literal(word.clone()));
+                            parts.push(TokenPart::Plain(word.clone()));
                             word.clear();
+                            space = false;
                         }
                         continue;
                     }
 
                     if curr_char == '|' {
-                        println!("entering modifiers");
                         state = StringParserState::Modifiers;
-                        mod_target.push_str(&word);                            
+                        mod_target.push_str(&word);
                         word.clear();
+                        space = false;
+                        println!("entering modifiers w:`{word}` t:`{mod_target}`");
                         continue;
                     }
 
                     if curr_char != ' ' {
+                        // another way to do it, a vec of words and the latest will be sent as either modified or plain
+                        if space && !word.is_empty() {
+                            println!("pushing Plain: `{word}`");
+                            parts.push(TokenPart::Plain(word.clone()));
+                            word.clear();
+                        }
+
                         word.push(curr_char);
+                        println!("adding to the word: `{word}`");
+                        space = false;
+                        // if (space) {
+
+                        // }
                         // println!("inside brackets ch '{curr_char}', word '{word}'");
                     }
 
-                    let word_terminator = curr_char == ' ' || curr_char == ']';
-
-                    if word_terminator && word.len() > 0 {
-                        parts.push(TokenPart::Plain(word.clone()));
-                        word.clear();
-                        continue;
-                    }
+                    
                 }
-                StringParserState::InsideGroup => {
+                StringParserState::InsideGroup => {                    
                     if curr_char == ')' {
-                        println!("leaving group");
-
-                        if word.len() > 0 {
-                            mod_target.push_str(&word);
-                            word.clear();
-                        }
+                        println!("leaving modifiers");
 
                         if modifiers.len() > 0 {
                             parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
@@ -334,42 +356,55 @@ impl TweldDsl {
                             parts.push(TokenPart::Plain(mod_target.clone()));
                         }
 
-                        state = StringParserState::InsideBrackets;
+                        state = StringParserState::InsideBrackets;                        
 
                         mod_target.clear();
                         modifiers = vec![];
                         word.clear();
+                        space = false;
                         continue;
                     }
 
                     if curr_char == '|' {
                         println!("entering modifiers");
                         state = StringParserState::Modifiers;
+                        mod_target.push_str(&word);
                         word.clear();
+                        space = false;
+                        println!("entering modifiers w:`{word}` t:`{mod_target}`");
                         continue;
                     }
 
-                    if curr_char == ' ' {
-                        mod_target.push_str(&word);
-                        word.clear();
-                        continue;
-                    }
+                    // if curr_char == ' ' {
+                    //     mod_target.push_str(&word);
+                    //     word.clear();
+                    //     continue;
+                    // }
 
                     word.push(curr_char);
                 }
                 StringParserState::Modifiers => {
+                    // if word.len() > 0 {
+                    //     println!("1");
+                    //     mod_target.push_str(&word);
+                    //     word.clear();                        
+                    // }
+
                     if curr_char == '|' {
+                        println!("2");
                         continue;
                     }
 
                     let word_terminator = curr_char == ' ' || curr_char == '{' || curr_char == ')';
 
                     if !word_terminator {
+                        println!("3");
                         word.push(curr_char);
                         println!("word: '{word}'");
                     }
 
                     if word_terminator && word.len() > 0 {
+                        println!("4");
                         println!("word: '{word}'");
 
                         match word.to_lowercase().trim() {

@@ -200,7 +200,7 @@ mod tests {
             (
                 // issue here, if theres a space before the |
                 // =======================\/
-                quote! { "@[get_ TestStruct| shoutykebabcase ]" },
+                quote! { "@[ge t _ TestStruct | shoutykebabcase ]" },
                 "\"get_TEST-STRUCT\"",
             ),
             // (
