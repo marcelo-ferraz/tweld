@@ -3,6 +3,7 @@ use proc_macro2::{Literal, TokenStream};
 use quote::format_ident;
 use syn::{LitStr, parse2};
 
+use crate::parser::RenderAs;
 use crate::{builder::build_string, parser::TweldDsl};
 
 pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
@@ -26,9 +27,17 @@ pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
                         };
                                                 
                         let dsl: TweldDsl = parse2(bracket_group.stream())?;
-                        let identifier = build_string(dsl.parts).replace(" ", "");
+                        let result = build_string(dsl.parts).replace(" ", "");
 
-                        output.push(TokenTree::Ident(format_ident!("{}", identifier)));
+                        match dsl.render_as {
+                            RenderAs::Identifier => {
+                                output.push(TokenTree::Ident(format_ident!("{}", result)));
+                            },
+                            RenderAs::StringLiteral => {
+                                output.push(TokenTree::Literal(Literal::string(&result)));
+                            },
+                        }
+                            
                         continue;
                     }
                 }

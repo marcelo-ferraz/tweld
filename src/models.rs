@@ -37,3 +37,9 @@ pub enum StringParserState {
     Modifiers
 }
 
+pub enum TokenParserState {    
+    InsideBrackets,
+    InsideGroup,
+    Modifiers
+}
+

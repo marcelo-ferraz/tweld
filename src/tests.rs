@@ -72,7 +72,7 @@ mod tests {
             quote! { "@[(g et TestStruct)]" },
             quote! { "@[(get TestStruct)]" },
             quote! { "@[(getTest Struct)]" },
-            quote! { "@[(getT estSt ruct)]" },
+            quote! { @[("get" TestStruct)] },
         ];
 
         assert_transformations_same_output(arguments, "\"getTestStruct\"");
@@ -102,7 +102,7 @@ mod tests {
             (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
             (quote! { "Something  \"@[(get TestStruct)]\" here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
             (quote! { "Something - @[(getTest) (Struct)]Here!" }, "\"Something - getTestStructHere!\""),
-            (quote! { "Something  @[getT estSt ruct]here!" }, "\"Something  getTestStructhere!\""),
+            (quote! { "Some thing  @[getT estSt ruct]here!" }, "\"Some thing  getTestStructhere!\""),
         ];
 
         assert_transformations(arguments);

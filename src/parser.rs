@@ -2,165 +2,255 @@ use std::iter::Peekable;
 use std::str::{Chars, FromStr};
 
 use proc_macro2::TokenTree;
+use syn::parse::discouraged::AnyDelimiter;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Lit, LitInt, LitStr, Token, parenthesized};
+use syn::{Ident, Lit, LitInt, LitStr, Token, Type, parenthesized};
 
-use crate::models::{Modifier, StringParserState, TokenPart};
+use crate::models::{Modifier, StringParserState, TokenParserState, TokenPart};
+
+pub enum RenderAs {
+    StringLiteral,
+    Identifier
+}
 
 pub struct TweldDsl {
+    pub render_as: RenderAs,
     pub parts: Vec<TokenPart>,
 }
 
+fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modifier>> {
+    let mut modifiers = Vec::new();
+    
+    while content.peek(Token![|]) {
+        content.parse::<Token![|]>()?;
+        if content.is_empty() {
+            break;
+        }
+
+        let mod_name: Ident = content.parse()?;
+        match mod_name.to_string().to_lowercase().as_str() {
+            "singular" => modifiers.push(Modifier::Singular),
+            "plural" => modifiers.push(Modifier::Plural),
+            "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
+            "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
+            "pascal" | "pascalcase" | "uppercamelcase" => {
+                modifiers.push(Modifier::PascalCase)
+            }
+            "lowercamelcase" | "camelcase" | "camel" => {
+                modifiers.push(Modifier::LowerCamelCase)
+            }
+            "snakecase" | "snake" | "snekcase" | "snek" => {
+                modifiers.push(Modifier::SnakeCase)
+            }
+            "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
+            "shoutysnakecase" | "shoutysnake" | "shoutysnekcase" | "shoutysnek" => {
+                modifiers.push(Modifier::ShoutySnakeCase)
+            }
+            "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
+            "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
+            "traincase" | "train" => modifiers.push(Modifier::TrainCase),
+            "replace" => {
+                let args;
+                syn::braced!(args in content);
+                let from = args.parse::<LitStr>()?;
+                args.parse::<Token![,]>()?;
+                let to = args.parse::<LitStr>()?;
+                modifiers.push(Modifier::Replace(from.value(), to.value()));
+            }
+            "substr" | "substring" => {
+                let args;
+                syn::braced!(args in content);
+                let from = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())
+                    .ok();
+
+                args.parse::<Token![,]>()?;
+
+                let to = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())
+                    .ok();
+
+                modifiers.push(Modifier::Substr(from, to));
+            }
+            "reverse" | "rev" => modifiers.push(Modifier::Reverse),
+            "repeat" | "rep" | "times" => {
+                let args;
+                syn::braced!(args in content); 
+                let times = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())?;
+
+                modifiers.push(Modifier::Repeat(times));
+            },
+            "split" => {
+                let args;
+                syn::braced!(args in content);
+
+                let lit: Lit = args.parse()?; // Consume the literal
+        
+                match lit {
+                    Lit::Str(sep) => {
+                        modifiers.push(Modifier::Split(sep.value()));
+                    }
+                    Lit::Int(num) => {
+                        let mid = num.base10_parse::<usize>()?;
+                        modifiers.push(Modifier::SplitAt(mid));
+                    }
+                    _ =>  return Err(syn::Error::new(
+                        mod_name.span(),
+                        format!("Expected a string or integer literal {:?}", mod_name.span()),
+                    ))
+                }                                                
+            },
+            "join" => {
+                let args;
+                syn::braced!(args in content);
+                let sep = args.parse::<LitStr>()?;                        
+                modifiers.push(Modifier::Join(sep.value()));
+            },
+            "padstart" | "padleft" | "padl" => {
+                let args;
+                syn::braced!(args in content);
+                let size = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())?;
+
+                args.parse::<Token![,]>()?;
+
+                let pad = args.parse::<LitStr>()?;
+
+                modifiers.push(Modifier::PadStart(size, pad.value()));
+            },
+            "padend" | "padright" | "padr" => {
+                let args;
+                syn::braced!(args in content);
+                let size = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())?;
+
+                args.parse::<Token![,]>()?;
+
+                let pad = args.parse::<LitStr>()?;
+
+                modifiers.push(Modifier::PadEnd(size, pad.value()));
+            },
+
+            _ => {
+                return Err(syn::Error::new(
+                    mod_name.span(),
+                    format!("Unknown modifier {:?}", mod_name.span()),
+                ));
+            }
+        }
+    }
+    Ok(modifiers)
+}
+
+fn parse_stream(
+    input: &syn::parse::ParseBuffer<'_>, 
+    parts: &mut Vec<TokenPart>, 
+    state: TokenParserState, 
+    mut word: String
+) -> syn::Result<RenderAs> {
+    let mut render_as = RenderAs::Identifier;
+
+    while !input.is_empty() {
+        println!("looping");
+        match state {
+            TokenParserState::InsideBrackets => {
+                if input.peek(syn::token::Paren) { 
+                    println!("entering group");
+                    let group;
+                    parenthesized!(group in input); 
+                    render_as = parse_stream(&group, parts, TokenParserState::InsideGroup, word.clone())?;
+                    println!("ss");
+                    continue;
+                }
+
+                if input.peek(Token![|]) {
+                    println!("entering modifiers");
+                    render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone())?;
+                    continue;
+                }
+
+                if !word.is_empty() {
+                    println!("pushing plain: `{word}`");
+                    parts.push(TokenPart::Plain(word.clone()));
+                    word.clear();
+                }
+            
+                if input.peek(syn::Ident) {
+                    println!("save ident");
+                    word = input
+                        .parse::<Ident>()?
+                        .to_string();
+                }
+
+                if input.peek(syn::LitStr) {
+                    println!("save lit");
+                    word = input
+                        .parse::<LitStr>()?
+                        .value();  
+                    render_as = RenderAs::StringLiteral;                      
+                }
+            },
+            TokenParserState::InsideGroup => {                    
+                while !input.is_empty() {
+                    if input.peek(Token![|]) {
+                        println!("entering modifiers");
+                        render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone())?;
+                        word.clear();
+                        continue;
+                    }
+
+                    if input.peek(syn::Ident) {
+                        println!("acc ident");
+                        let value = input
+                            .parse::<Ident>()?
+                            .to_string();
+                        word.push_str(&value);
+                    }
+
+                    if input.peek(syn::LitStr) {
+                        println!("acc lit");
+                        let value = input
+                            .parse::<LitStr>()?
+                            .value();
+                        word.push_str(&value);
+                        render_as = RenderAs::StringLiteral;
+                    }
+                }
+            },
+            TokenParserState::Modifiers => {
+                println!("getting modifiers");
+                let modifiers = get_modifiers(input)?;
+                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                word.clear();
+            },
+        }
+        
+        if !word.is_empty() {
+            parts.push(TokenPart::Plain(word.clone()));
+            word.clear();
+        }
+    }
+    Ok(render_as)
+}
+
+
 impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut parts = Vec::new();
-        while !input.is_empty() {
-            if !input.peek(syn::token::Paren) {                
-                let tt: TokenTree = input.parse()?;
-                parts.push(TokenPart::Plain(tt.to_string()));
-                continue;
-            }
-
-            let mod_content;
-            parenthesized!(mod_content in input);
-
-            let mut target = String::new();
-
-            while mod_content.peek(syn::Ident) {
-                target.push_str(&mod_content.parse::<Ident>()?.to_string());
-            }
-
-            let mut modifiers = Vec::new();
-
-            while mod_content.peek(Token![|]) {
-                mod_content.parse::<Token![|]>()?;
-                if mod_content.is_empty() {
-                    break;
-                }
-
-                let mod_name: Ident = mod_content.parse()?;
-                match mod_name.to_string().to_lowercase().as_str() {
-                    "singular" => modifiers.push(Modifier::Singular),
-                    "plural" => modifiers.push(Modifier::Plural),
-                    "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
-                    "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
-                    "pascal" | "pascalcase" | "uppercamelcase" => {
-                        modifiers.push(Modifier::PascalCase)
-                    }
-                    "lowercamelcase" | "camelcase" | "camel" => {
-                        modifiers.push(Modifier::LowerCamelCase)
-                    }
-                    "snakecase" | "snake" | "snekcase" | "snek" => {
-                        modifiers.push(Modifier::SnakeCase)
-                    }
-                    "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
-                    "shoutysnakecase" | "shoutysnake" | "shoutysnekcase" | "shoutysnek" => {
-                        modifiers.push(Modifier::ShoutySnakeCase)
-                    }
-                    "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
-                    "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
-                    "traincase" | "train" => modifiers.push(Modifier::TrainCase),
-                    "replace" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-                        let from = args.parse::<LitStr>()?;
-                        args.parse::<Token![,]>()?;
-                        let to = args.parse::<LitStr>()?;
-                        modifiers.push(Modifier::Replace(from.value(), to.value()));
-                    }
-                    "substr" | "substring" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-                        let from = args
-                            .parse::<LitInt>()
-                            .and_then(|val| val.base10_parse::<usize>())
-                            .ok();
-
-                        args.parse::<Token![,]>()?;
-
-                        let to = args
-                            .parse::<LitInt>()
-                            .and_then(|val| val.base10_parse::<usize>())
-                            .ok();
-
-                        modifiers.push(Modifier::Substr(from, to));
-                    }
-                    "reverse" | "rev" => modifiers.push(Modifier::Reverse),
-                    "repeat" | "rep" | "times" => {
-                        let args;
-                        syn::braced!(args in mod_content); 
-                        let times = args
-                            .parse::<LitInt>()
-                            .and_then(|val| val.base10_parse::<usize>())?;
-
-                        modifiers.push(Modifier::Repeat(times));
-                    },
-                    "split" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-
-                        let lit: Lit = input.parse()?; // Consume the literal
-        
-                        match lit {
-                            Lit::Str(sep) => {
-                                modifiers.push(Modifier::Split(sep.value()));
-                            }
-                            Lit::Int(num) => {
-                                let mid = num.base10_parse::<usize>()?;
-                                modifiers.push(Modifier::SplitAt(mid));
-                            }
-                            _ =>  return Err(syn::Error::new(
-                                mod_name.span(),
-                                format!("Expected a string or integer literal {:?}", mod_name.span()),
-                            ))
-                        }                                                
-                    },
-                    "join" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-                        let sep = args.parse::<LitStr>()?;                        
-                        modifiers.push(Modifier::Join(sep.value()));
-                    },
-                    "padstart" | "padleft" | "padl" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-                        let size = args
-                            .parse::<LitInt>()
-                            .and_then(|val| val.base10_parse::<usize>())?;
-
-                        args.parse::<Token![,]>()?;
-
-                        let pad = args.parse::<LitStr>()?;
-
-                        modifiers.push(Modifier::PadStart(size, pad.value()));
-                    },
-                    "padend" | "padright" | "padr" => {
-                        let args;
-                        syn::braced!(args in mod_content);
-                        let size = args
-                            .parse::<LitInt>()
-                            .and_then(|val| val.base10_parse::<usize>())?;
-
-                        args.parse::<Token![,]>()?;
-
-                        let pad = args.parse::<LitStr>()?;
-
-                        modifiers.push(Modifier::PadEnd(size, pad.value()));
-                    },
-
-                    _ => {
-                        return Err(syn::Error::new(
-                            mod_name.span(),
-                            format!("Unknown modifier {:?}", mod_name.span()),
-                        ));
-                    }
-                }
-            }
-            parts.push(TokenPart::Modified(vec![target], modifiers));
-        }
-        Ok(TweldDsl { parts })
+        let mut parts = Vec::new();        
+        // let b = input
+        let render_as = parse_stream(input, &mut parts, TokenParserState::InsideBrackets, String::new())?;
+        println!("parts: {parts:?}");
+        Ok(TweldDsl { render_as, parts })
     }
 }
+
+
 
 fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &LitStr) -> syn::Result<(String, bool)> {    
     let mut contains_str = false;
@@ -712,6 +802,9 @@ impl TweldDsl {
             parts.push(TokenPart::Literal(word.clone()));
         }
 
-        Ok(TweldDsl { parts })
+        Ok(TweldDsl { 
+            render_as: RenderAs::StringLiteral, 
+            parts 
+        })
     }
 }
