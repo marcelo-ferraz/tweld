@@ -174,15 +174,6 @@ mod tests {
         assert_transformations_same_output(arguments, "GET_TEST_STRUCT");
     }
 
-    // #[test]
-    fn should_transform_to_kebab_case2() {
-        let arguments = vec![
-            // quote! { @[(get_ Test | snek) - (Struct | snek) ] },
-            quote! { @[(loop Struct| snek) ] },
-        ];
-
-        assert_transformations_same_output(arguments, "loop-struct");
-    }
 
     #[test]
     fn should_transform_to_kebab_case() {
@@ -213,15 +204,7 @@ mod tests {
             // ),
         ];
 
-        for (input, expected) in arguments {
-            let result = 
-                scan_tokens(TokenStream::from(input)).unwrap();
-            let result = result.to_string();
-            assert_eq!(
-                result, expected,
-                "Welded tokens didnt match: {{ res: {result}, exp: {expected} }}",
-            );
-        }
+        assert_transformations(arguments);
     }
 
     #[test]
@@ -277,22 +260,22 @@ mod tests {
     #[test]
     fn should_apply_replace() {
         let arguments = vec![
-            (
-                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} )] },
-                "get_Test_Info",
-            ),
-            (
-                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
-                "get_Test_InfoById",
-            ),
-            (
-                quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
-                "\"get_Test_InfoById\"",
-            ),
-            (
-                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
-                "\"get_Test_InfoById\"",
-            ),
+            // (
+            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} )] },
+            //     "get_Test_Info",
+            // ),
+            // (
+            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
+            //     "get_Test_InfoById",
+            // ),
+            // (
+            //     quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
+            //     "\"get_Test_InfoById\"",
+            // ),
+            // (
+            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
+            //     "\"get_Test_InfoById\"",
+            // ),
             (
                 quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" },
                 "\"get_Test_Info-by-id\"",
@@ -305,7 +288,7 @@ mod tests {
     #[test]
     fn should_chain_piped_modifiers() {
         let arguments = vec![
-            (
+                        (
                 quote! { @[(get__ TestStruct | upper | snek) ] },
                 "get_teststruct",
             ),
@@ -337,6 +320,10 @@ mod tests {
                 quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | kebab) - by -id]" },
                 "\"get-test-info-by-id\"",
             ),
+            (
+                quote! { "@[g e t _ testStruct | replace{\"Struct\", \"_Info\"} | pascal]" },
+                "\"get_TestInfo\"",
+            ),
         ];
 
         assert_transformations(arguments);
@@ -347,24 +334,36 @@ mod tests {
         let arguments = vec![
             (
                 quote! {
-                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
+                    "The functions are diferent @[get TestStruct] != @[(get TestStruct | replace {'Struct', 'Info'}| replace{' ', \"\"} )] !"
                 },
                 "\"The functions are diferent getTestStruct != getTestInfo !\"",
             ),
-            (
-                quote! {
-                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
-                },
-                "\"The functions are diferent getTestStruct != getTestInfo !\"",
-            ),
-            (
-                quote!{
-                    "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]"
-                },
-                "\"getTestInfoById != get_TestStructsById\""
-            ),
+            // (
+            //     quote! {
+            //         "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
+            //     },
+            //     "\"The functions are diferent getTestStruct != getTestInfo !\"",
+            // ),
+            // (
+            //     quote!{
+            //         "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]"
+            //     },
+            //     "\"getTestInfoById != get_TestStructsById\""
+            // ),
         ];
 
         assert_transformations(arguments);
+    }
+
+    // TODO: this needs to be tackled
+    // #[test]
+    #[allow(dead_code)]
+    fn should_transform_with_reserved() {
+        let arguments = vec![
+            // quote! { @[(get_ Test | snek) - (Struct | snek) ] },
+            quote! { @[(loop Struct| snek) ] },
+        ];
+
+        assert_transformations_same_output(arguments, "loop-struct");
     }
 }

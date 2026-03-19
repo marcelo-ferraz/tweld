@@ -190,26 +190,63 @@ fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &Lit
     Ok((word, double > 0 || single > 0))
 }
 
+enum StrKind {
+    SingleQuotes,
+    DoubleQuotes,
+    None
+}
+
 fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, String) {
-    let mut left_side: bool = true;
+    let mut left_side = true;
+    let mut str_kind = StrKind::None;
     let mut left_word= String::new();
     let mut right_word = String::new();
 
     while let Some(char) = clean_chars.next() {
-        if char == '}' { break; }
-    
-        let ignore_char = char == ' ' 
-            || char == '\t'
-            || char == '{' 
-            || char == '"' 
-            || char == '\'';
-        
-        if ignore_char { continue; }
+        match str_kind {
+            StrKind::SingleQuotes => {
+                if char == '\'' {
+                    str_kind = StrKind::None;
+                    println!("leaving s quotes");
+                    continue;
+                }
+            },
+            StrKind::DoubleQuotes => {
+                if char == '"' {
+                    str_kind = StrKind::None;
+                    println!("leaving d quotes");
+                    continue;
+                }
+            },
+            StrKind::None => {
+                if char == '"' {
+                    str_kind = StrKind::DoubleQuotes;
+                    println!("entering d quotes");
+                    continue;
+                }
 
-        if char == ',' { 
-            left_side = false; 
-            continue;
+                if char == '\'' {
+                    str_kind = StrKind::SingleQuotes;
+                    println!("entering s quotes");
+                    continue;
+                }
+
+                if char == ' ' 
+                    || char == '\t'
+                    || char == '{'  {
+                    continue;
+                }
+                    
+                if char == '}' { break; }
+                
+                if char == ',' { 
+                    left_side = false; 
+                    continue;
+                }
+            },
         }
+
+        println!("pushing: `{char}`");
 
         if left_side {
             left_word.push(char);
@@ -290,11 +327,20 @@ impl TweldDsl {
                     if curr_char == ']' {
                         println!("leaving brackets");
 
-                        if modifiers.len() > 0 {
-                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
-                        } else {
-                            parts.push(TokenPart::Plain(mod_target.clone()));
-                        }
+                        if !mod_target.is_empty() {
+                            if modifiers.len() > 0 {
+                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                            } else {
+                                parts.push(TokenPart::Plain(mod_target.clone()));
+                            }
+                        } else if !word.is_empty() {
+                            if modifiers.len() > 0 {
+                                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                            } else {
+                                parts.push(TokenPart::Plain(word.clone()));
+                            }
+                        } 
+
 
                         state = StringParserState::Idle;
                         
@@ -309,7 +355,7 @@ impl TweldDsl {
                         println!("entering group");
                         state = StringParserState::InsideGroup;
 
-                        if word.len() > 0 {
+                        if !word.is_empty() {
                             println!("flushing word 2: `{word}`");
                             parts.push(TokenPart::Plain(word.clone()));
                             word.clear();
@@ -320,7 +366,7 @@ impl TweldDsl {
 
                     if curr_char == '|' {
                         state = StringParserState::Modifiers;
-                        mod_target.push_str(&word);
+                        mod_target.push_str(&word.replace(" ", ""));
                         word.clear();
                         space = false;
                         println!("entering modifiers w:`{word}` t:`{mod_target}`");
@@ -338,22 +384,18 @@ impl TweldDsl {
                         word.push(curr_char);
                         println!("adding to the word: `{word}`");
                         space = false;
-                        // if (space) {
-
-                        // }
-                        // println!("inside brackets ch '{curr_char}', word '{word}'");
                     }
-
-                    
                 }
                 StringParserState::InsideGroup => {                    
                     if curr_char == ')' {
                         println!("leaving modifiers");
 
-                        if modifiers.len() > 0 {
-                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
-                        } else {
-                            parts.push(TokenPart::Plain(mod_target.clone()));
+                        if !mod_target.is_empty() {
+                            if modifiers.len() > 0 {
+                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                            } else {
+                                parts.push(TokenPart::Plain(mod_target.clone()));
+                            }
                         }
 
                         state = StringParserState::InsideBrackets;                        
@@ -368,7 +410,7 @@ impl TweldDsl {
                     if curr_char == '|' {
                         println!("entering modifiers");
                         state = StringParserState::Modifiers;
-                        mod_target.push_str(&word);
+                        mod_target.push_str(&word.replace(" ", ""));                        
                         word.clear();
                         space = false;
                         println!("entering modifiers w:`{word}` t:`{mod_target}`");
@@ -395,7 +437,7 @@ impl TweldDsl {
                         continue;
                     }
 
-                    let word_terminator = curr_char == ' ' || curr_char == '{' || curr_char == ')';
+                    let word_terminator = curr_char == ' ' || curr_char == '{' || curr_char == ')' || curr_char == ']';
 
                     if !word_terminator {
                         println!("3");
@@ -434,6 +476,7 @@ impl TweldDsl {
                                 let (left_word, right_word) =
                                     extract_left_and_right(&mut clean_chars);
 
+                                    println!("left : `{left_word}`, right: `{right_word}`");
                                 modifiers.push(Modifier::Replace(left_word, right_word));
                             }
                             "substr" | "substring" => {
@@ -455,6 +498,7 @@ impl TweldDsl {
                                 modifiers.push(Modifier::Substr(start_index, end_index));
                             }                            
                             "reverse" | "rev" => modifiers.push(Modifier::Reverse),
+                            "trim" => modifiers.push(Modifier::Trim),
                             "repeat" | "rep" | "times" => {
                                 let (result, _)  = extract_word(&mut clean_chars, "split", input_lit)?;
                                 
@@ -554,10 +598,12 @@ impl TweldDsl {
                     if curr_char == ')' || curr_char == ']' {
                         println!("leaving modifiers");
 
-                        if modifiers.len() > 0 {
-                            parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
-                        } else {
-                            parts.push(TokenPart::Plain(mod_target.clone()));
+                        if !mod_target.is_empty() {
+                            if modifiers.len() > 0 {
+                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                            } else {
+                                parts.push(TokenPart::Plain(mod_target.clone()));
+                            }
                         }
 
                         if curr_char == ')' {
