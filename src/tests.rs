@@ -260,22 +260,22 @@ mod tests {
     #[test]
     fn should_apply_replace() {
         let arguments = vec![
-            // (
-            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} )] },
-            //     "get_Test_Info",
-            // ),
-            // (
-            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
-            //     "get_Test_InfoById",
-            // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
-            //     "\"get_Test_InfoById\"",
-            // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
-            //     "\"get_Test_InfoById\"",
-            // ),
+            (
+                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} )] },
+                "get_Test_Info",
+            ),
+            (
+                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
+                "get_Test_InfoById",
+            ),
+            (
+                quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
+                "\"get_Test_InfoById\"",
+            ),
+            (
+                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
+                "\"get_Test_InfoById\"",
+            ),
             (
                 quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" },
                 "\"get_Test_Info-by-id\"",

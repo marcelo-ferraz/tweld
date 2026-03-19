@@ -162,60 +162,39 @@ impl Parse for TweldDsl {
     }
 }
 
-fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &LitStr) -> syn::Result<(String, bool)> {
+fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &LitStr) -> syn::Result<(String, bool)> {    
+    let mut contains_str = false;
+    let mut str_kind = StrKind::None;    
     let mut word = String::new();
-        
-    while let Some(char) = clean_chars.next() {
-        if char == '}' { break; }
-    
-        let ignore_char = char == ' ' 
-            || char == '\t'
-            || char == '{'            
-            || char == ',';
-        
-        if ignore_char { continue; }
-        word.push(char);        
-    }
-
-    let double = word.chars().filter(|c| *c == '"').count();
-    let single = word.chars().filter(|c| *c == '\'').count();
-
-    if double % 2 != 0 || single % 2 != 0 {
-        return Err(syn::Error::new(
-            lit.span(),
-            format!("String badly formed for {modifier} {:?}", lit.span()),
-        ));
-    }
-
-    Ok((word, double > 0 || single > 0))
-}
-
-enum StrKind {
-    SingleQuotes,
-    DoubleQuotes,
-    None
-}
-
-fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, String) {
-    let mut left_side = true;
-    let mut str_kind = StrKind::None;
-    let mut left_word= String::new();
-    let mut right_word = String::new();
 
     while let Some(char) = clean_chars.next() {
         match str_kind {
             StrKind::SingleQuotes => {
                 if char == '\'' {
+                    contains_str = true;
                     str_kind = StrKind::None;
                     println!("leaving s quotes");
                     continue;
                 }
+                if char == '}' {
+                    return Err(syn::Error::new(
+                        lit.span(),
+                format!("String badly formed for {modifier} {:?}", lit.span()),
+                    ));
+                }
             },
-            StrKind::DoubleQuotes => {
+            StrKind::DoubleQuotes => {                
                 if char == '"' {
+                    contains_str = true;
                     str_kind = StrKind::None;
                     println!("leaving d quotes");
                     continue;
+                }
+                if char == '}' {
+                    return Err(syn::Error::new(
+                        lit.span(),
+                format!("String badly formed for {modifier} {:?}", lit.span()),
+                    ));
                 }
             },
             StrKind::None => {
@@ -237,7 +216,82 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
                     continue;
                 }
                     
-                if char == '}' { break; }
+                if char == '}' {
+                    break; 
+                }
+            },
+        }
+
+        println!("pushing: `{char}`");
+
+        word.push(char);
+    }
+
+    Ok((word, contains_str))
+}
+
+enum StrKind {
+    SingleQuotes,
+    DoubleQuotes,
+    None
+}
+
+fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &LitStr) -> syn::Result<(String, String)> {
+    let mut left_side = true;
+    let mut str_kind = StrKind::None;
+    let mut left_word= String::new();
+    let mut right_word = String::new();
+
+    while let Some(char) = clean_chars.next() {
+        match str_kind {
+            StrKind::SingleQuotes => {
+                if char == '\'' {
+                    str_kind = StrKind::None;
+                    println!("leaving s quotes");
+                    continue;
+                }
+                if char == '}' {
+                    return Err(syn::Error::new(
+                        lit.span(),
+                format!("String badly formed for {modifier} {:?}", lit.span()),
+                    ));
+                }
+            },
+            StrKind::DoubleQuotes => {
+                if char == '"' {
+                    str_kind = StrKind::None;
+                    println!("leaving d quotes");
+                    continue;
+                }
+                if char == '}' {
+                    return Err(syn::Error::new(
+                        lit.span(),
+                format!("String badly formed for {modifier} {:?}", lit.span()),
+                    ));
+                }
+            },
+            StrKind::None => {
+                if char == '"' {
+                    str_kind = StrKind::DoubleQuotes;
+                    println!("entering d quotes");
+                    continue;
+                }
+
+                if char == '\'' {
+                    str_kind = StrKind::SingleQuotes;
+                    println!("entering s quotes");
+                    continue;
+                }
+
+                if char == ' ' 
+                    || char == '\t'
+                    || char == '{'  {
+                    continue;
+                }
+                    
+                if char == '}' {
+                    break; 
+                }
                 
                 if char == ',' { 
                     left_side = false; 
@@ -255,7 +309,7 @@ fn extract_left_and_right(clean_chars: &mut Peekable<Chars<'_>>) -> (String, Str
         }
     }
 
-    (left_word, right_word)
+    Ok((left_word, right_word))
 }
 
 fn try_num<T: FromStr>(input: &str, field: &str, parent: &LitStr) -> syn::Result<T> {
@@ -388,13 +442,19 @@ impl TweldDsl {
                 }
                 StringParserState::InsideGroup => {                    
                     if curr_char == ')' {
-                        println!("leaving modifiers");
+                        println!("leaving modifiers2");
 
                         if !mod_target.is_empty() {
                             if modifiers.len() > 0 {
                                 parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
                             } else {
                                 parts.push(TokenPart::Plain(mod_target.clone()));
+                            }
+                        } else if !word.is_empty() {
+                            if modifiers.len() > 0 {
+                                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                            } else {
+                                parts.push(TokenPart::Plain(word.clone()));
                             }
                         }
 
@@ -474,14 +534,14 @@ impl TweldDsl {
                             "traincase" | "train" => modifiers.push(Modifier::TrainCase),
                             "replace" => {
                                 let (left_word, right_word) =
-                                    extract_left_and_right(&mut clean_chars);
+                                    extract_left_and_right(&mut clean_chars, &word, input_lit)?;
 
                                     println!("left : `{left_word}`, right: `{right_word}`");
                                 modifiers.push(Modifier::Replace(left_word, right_word));
                             }
                             "substr" | "substring" => {
                                 let (left_word, right_word) =
-                                    extract_left_and_right(&mut clean_chars);
+                                    extract_left_and_right(&mut clean_chars, &word, input_lit)?;
                                 let mut start_index: Option<usize> = None;
 
                                 if !left_word.is_empty() {
@@ -497,8 +557,7 @@ impl TweldDsl {
 
                                 modifiers.push(Modifier::Substr(start_index, end_index));
                             }                            
-                            "reverse" | "rev" => modifiers.push(Modifier::Reverse),
-                            "trim" => modifiers.push(Modifier::Trim),
+                            "reverse" | "rev" => modifiers.push(Modifier::Reverse),                            
                             "repeat" | "rep" | "times" => {
                                 let (result, _)  = extract_word(&mut clean_chars, "split", input_lit)?;
                                 
@@ -544,7 +603,7 @@ impl TweldDsl {
                             }
                             "padstart" | "padleft" | "padl" => {
                                 let (left_word, right_word) =
-                                    extract_left_and_right(&mut clean_chars);
+                                    extract_left_and_right(&mut clean_chars, &word, input_lit)?;
                                 let mut index = 0;
                                 if !left_word.is_empty() {
                                     index = try_num(&left_word, "start", input_lit)?;
@@ -568,7 +627,7 @@ impl TweldDsl {
                             }
                             "padend" | "padright" | "padr" => {
                                 let (left_word, right_word) =
-                                    extract_left_and_right(&mut clean_chars);
+                                    extract_left_and_right(&mut clean_chars, &word, input_lit)?;
                                 let mut index = 0;
                                 if !left_word.is_empty() {
                                     index = try_num(&left_word, "start", input_lit)?;
