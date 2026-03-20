@@ -149,20 +149,19 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
 
 fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>, 
-    parts: &mut Vec<TokenPart>, 
+    mut dsl: TweldDsl,
     state: TokenParserState, 
     mut word: String,
-    mut render_as: RenderAs
-) -> syn::Result<RenderAs> {
+) -> syn::Result<TweldDsl> {
     while !input.is_empty() {
-        println!("looping: {state:?} {parts:?}");
+        println!("looping: {state:?} {:?}", dsl.parts);
         match state {
             TokenParserState::InsideBrackets => {
                 if input.peek(syn::token::Paren) { 
                     println!("entering group");
                     let group;
                     parenthesized!(group in input); 
-                    render_as = parse_stream(&group, parts, TokenParserState::InsideGroup, word.clone(), render_as)?;
+                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, word.clone())?;
                     word.clear();
                     println!("leaving group");
                     continue;
@@ -170,19 +169,19 @@ fn parse_stream(
 
                 if input.peek(Token![|]) {
                     println!("entering modifiers");
-                    render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone(), render_as)?;
+                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone())?;
                     continue;
                 }
 
                 if !word.is_empty() {
                     println!("pushing plain: `{word}`");
-                    parts.push(TokenPart::Plain(word.clone()));
+                    dsl.parts.push(TokenPart::Plain(word.clone()));
                     word.clear();
                 }
 
                 if input.peek(Token![-]) {
                     input.parse::<Token![-]>()?;
-                    parts.push(TokenPart::Plain("-".to_string()));
+                    dsl.parts.push(TokenPart::Plain("-".to_string()));
                     continue;
                 }
             
@@ -201,7 +200,7 @@ fn parse_stream(
                     word = input
                         .parse::<LitStr>()?
                         .value();  
-                    render_as = RenderAs::StringLiteral;
+                    dsl.render_as = RenderAs::StringLiteral;
                     println!("word: `{word}`");
                     continue;                      
                 }
@@ -213,7 +212,7 @@ fn parse_stream(
                 while !input.is_empty() {
                     if input.peek(Token![|]) {
                         println!("entering modifiers");
-                        render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone(), render_as)?;
+                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone())?;
                         word.clear();
                         continue;
                     }
@@ -241,7 +240,7 @@ fn parse_stream(
                             .parse::<LitStr>()?
                             .value();
                         word.push_str(&value);
-                        render_as = RenderAs::StringLiteral;
+                        dsl.render_as = RenderAs::StringLiteral;
                         continue;
                     }
                     
@@ -252,18 +251,16 @@ fn parse_stream(
             TokenParserState::Modifiers => {
                 println!("getting modifiers");
                 let modifiers = get_modifiers(input)?;
-                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                dsl.parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
                 word.clear();
             },
         }
         
-        // somewhere I need to know if the token was not consumed, and I need to waste it away
-        // let _ = input.parse::<proc_macro2::TokenTree>()?;
         println!("end - word: `{word}`");
 
         if !word.is_empty() {
             println!("inside loop push plain");
-            parts.push(TokenPart::Plain(word.clone()));
+            dsl.parts.push(TokenPart::Plain(word.clone()));
             word.clear();
         }
     }
@@ -271,21 +268,31 @@ fn parse_stream(
 
     if !word.is_empty() {
         println!("outside loop push plain");
-        parts.push(TokenPart::Plain(word.clone()));
+        dsl.parts.push(TokenPart::Plain(word.clone()));
         word.clear();
     }
-    println!("render_as: {render_as:?}");
-    Ok(render_as)
+    println!("render_as: {:?}", dsl.render_as);
+    Ok(dsl)
 }
 
 
 impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut parts = Vec::new();        
+        let mut dsl = TweldDsl { 
+            render_as: RenderAs::Identifier, 
+            parts: Vec::new(),
+        };
+        
         // let b = input
-        let render_as = parse_stream(input, &mut parts, TokenParserState::InsideBrackets, String::new(), RenderAs::Identifier)?;
-        println!("parts: {parts:?}");
-        Ok(TweldDsl { render_as, parts })
+        dsl = parse_stream(
+            input, 
+            dsl, 
+            TokenParserState::InsideBrackets, 
+            String::new()
+        )?;
+
+        println!("parts: {:?}", dsl.parts);
+        Ok(dsl)
     }
 }
 
@@ -297,6 +304,7 @@ fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &Lit
     let mut word = String::new();
 
     while let Some(char) = clean_chars.next() {
+        println!("extracting char: `{char}`");
         match str_kind {
             StrKind::SingleQuotes => {
                 if char == '\'' {
@@ -346,6 +354,7 @@ fn extract_word(clean_chars: &mut Peekable<Chars<'_>>, modifier: &str, lit: &Lit
                 }
                     
                 if char == '}' {
+                    println!("leaving extraction");
                     break; 
                 }
             },
@@ -713,12 +722,11 @@ impl TweldDsl {
 
                                 if is_str {
                                     modifiers.push(Modifier::Split(result));
-                                    continue;
-                                }
-
-                                let mid = try_num(&result, "start", input_lit)?;
-
-                                modifiers.push(Modifier::SplitAt(mid));
+                                    
+                                } else {
+                                    let mid = try_num(&result, "start", input_lit)?;
+                                    modifiers.push(Modifier::SplitAt(mid));
+                                }                                
                             }
                             "join" => {
                                 let (result, _) = extract_word(&mut clean_chars, "join", input_lit)?;

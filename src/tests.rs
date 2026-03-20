@@ -286,26 +286,18 @@ mod tests {
     #[test]
     fn should_apply_split() {
         let arguments = vec![
-            // (
-            //     quote! { @[(get_ Test_Struct | split{"_"} | title )] },
-            //     "GetTestStruct",
-            // ),
-            // (
-            //     quote! { @[(get - Test-Struct | split{"-"} | lower | join{"_"} )] },
-            //     "get_test_struct",
-            // ),
-            // (
-            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
-            //     "get_Test_InfoById",
-            // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
-            //     "\"get_Test_InfoById\"",
-            // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
-            //     "\"get_Test_InfoById\"",
-            // ),
+            (
+                quote! { @[(get_ Test_Struct | split{"_"} | title )] },
+                "GetTestStruct",
+            ),
+            (
+                quote! { @[(get - Test-Struct | split{"-"} | lower | join{"_"} )] },
+                "get_test_struct",
+            ),
+            (
+                quote! { "@[get- Test - Struct | split{\"-\"} | lower | join{'_'}) -by-id]" },
+                "\"get-Test-struct-by-id\"",
+            ),
             (
                 quote! { @[("get-" Test - Struct | split{"-"} | lower | join{"_"}) -by-id] },
                 "\"get_test_struct-by-id\"",
