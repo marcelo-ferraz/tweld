@@ -1,10 +1,8 @@
 use std::iter::Peekable;
 use std::str::{Chars, FromStr};
 
-use proc_macro2::TokenTree;
-use syn::parse::discouraged::AnyDelimiter;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Lit, LitInt, LitStr, Token, Type, parenthesized};
+use syn::{Ident, Lit, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserState, TokenParserState, TokenPart};
 
@@ -157,7 +155,7 @@ fn parse_stream(
     let mut render_as = RenderAs::Identifier;
 
     while !input.is_empty() {
-        println!("looping");
+        println!("looping: {state:?} {parts:?}");
         match state {
             TokenParserState::InsideBrackets => {
                 if input.peek(syn::token::Paren) { 
@@ -165,7 +163,8 @@ fn parse_stream(
                     let group;
                     parenthesized!(group in input); 
                     render_as = parse_stream(&group, parts, TokenParserState::InsideGroup, word.clone())?;
-                    println!("ss");
+                    word.clear();
+                    println!("leaving group");
                     continue;
                 }
 
@@ -173,6 +172,10 @@ fn parse_stream(
                     println!("entering modifiers");
                     render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone())?;
                     continue;
+                }
+                if input.peek(Token![-]) {
+                    input.parse::<Token![-]>()?;
+                    parts.push(TokenPart::Plain("-".to_string()));
                 }
 
                 if !word.is_empty() {
@@ -182,19 +185,27 @@ fn parse_stream(
                 }
             
                 if input.peek(syn::Ident) {
-                    println!("save ident");
+                    println!("save ident b");
                     word = input
                         .parse::<Ident>()?
                         .to_string();
+                    println!("word: `{word}`");
+
+                    continue;
                 }
 
                 if input.peek(syn::LitStr) {
-                    println!("save lit");
+                    println!("save lit b");
                     word = input
                         .parse::<LitStr>()?
                         .value();  
-                    render_as = RenderAs::StringLiteral;                      
+                    render_as = RenderAs::StringLiteral;
+                    println!("word: `{word}`");
+                    continue;                      
                 }
+
+                let ignored = input.parse::<proc_macro2::TokenTree>()?;
+                println!("ignored 1 {ignored:?}");
             },
             TokenParserState::InsideGroup => {                    
                 while !input.is_empty() {
@@ -205,22 +216,35 @@ fn parse_stream(
                         continue;
                     }
 
+                    if input.peek(Token![-]) {
+                        input.parse::<Token![-]>()?;
+                        word.push('-');
+                        continue;
+                    }
+
                     if input.peek(syn::Ident) {
-                        println!("acc ident");
+                        println!("acc ident g");
                         let value = input
                             .parse::<Ident>()?
                             .to_string();
+                        
                         word.push_str(&value);
+                        println!("word: {word}");
+                        continue;
                     }
 
                     if input.peek(syn::LitStr) {
-                        println!("acc lit");
+                        println!("acc lit g");
                         let value = input
                             .parse::<LitStr>()?
                             .value();
                         word.push_str(&value);
                         render_as = RenderAs::StringLiteral;
+                        continue;
                     }
+                    
+                let ignored = input.parse::<proc_macro2::TokenTree>()?;
+                println!("ignored 2 {ignored:?}");
                 }
             },
             TokenParserState::Modifiers => {
@@ -231,11 +255,24 @@ fn parse_stream(
             },
         }
         
+        // somewhere I need to know if the token was not consumed, and I need to waste it away
+        // let _ = input.parse::<proc_macro2::TokenTree>()?;
+        println!("end - word: `{word}`");
+
         if !word.is_empty() {
+            println!("inside loop push plain");
             parts.push(TokenPart::Plain(word.clone()));
             word.clear();
         }
     }
+    println!("end2 - word: `{word}`");
+
+    if !word.is_empty() {
+        println!("outside loop push plain");
+        parts.push(TokenPart::Plain(word.clone()));
+        word.clear();
+    }
+
     Ok(render_as)
 }
 

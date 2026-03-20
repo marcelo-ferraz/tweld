@@ -189,19 +189,17 @@ mod tests {
     fn should_transform_to_shouty_kebab_case() {
         let arguments = vec![
             (
-                // issue here, if theres a space before the |
-                // =======================\/
                 quote! { "@[ge t _ TestStruct | shoutykebabcase ]" },
                 "\"get_TEST-STRUCT\"",
             ),
-            // (
-            //     quote! { "@[(get_ TestStruct | shoutykebabcase) ]" },
-            //     "\"GET-TEST-STRUCT\"",
-            // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | shoutykebab) ]" },
-            //     "\"GET-TEST-STRUCT\"",
-            // ),
+            (
+                quote! { "@[(get_ TestStruct | shoutykebabcase) ]" },
+                "\"GET-TEST-STRUCT\"",
+            ),
+            (
+                quote! { "@[(get_ TestStruct | shoutykebab) ]" },
+                "\"GET-TEST-STRUCT\"",
+            ),
         ];
 
         assert_transformations(arguments);
@@ -286,6 +284,39 @@ mod tests {
     }
 
     #[test]
+    fn should_apply_split() {
+        let arguments = vec![
+            // (
+            //     quote! { @[(get_ Test_Struct | split{"_"} | title )] },
+            //     "GetTestStruct",
+            // ),
+            // (
+            //     quote! { @[(get - Test-Struct | split{"-"} | lower | join{"_"} )] },
+            //     "get_test_struct",
+            // ),
+            (
+                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
+                "get_Test_InfoById",
+            ),
+            // (
+            //     quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
+            //     "\"get_Test_InfoById\"",
+            // ),
+            // (
+            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
+            //     "\"get_Test_InfoById\"",
+            // ),
+            // (
+            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" },
+            //     "\"get_Test_Info-by-id\"",
+            // ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+
+    #[test]
     fn should_chain_piped_modifiers() {
         let arguments = vec![
                         (
@@ -338,22 +369,24 @@ mod tests {
                 },
                 "\"The functions are diferent getTestStruct != getTestInfo !\"",
             ),
-            // (
-            //     quote! {
-            //         "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
-            //     },
-            //     "\"The functions are diferent getTestStruct != getTestInfo !\"",
-            // ),
-            // (
-            //     quote!{
-            //         "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]"
-            //     },
-            //     "\"getTestInfoById != get_TestStructsById\""
-            // ),
+            (
+                quote! {
+                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
+                },
+                "\"The functions are diferent getTestStruct != getTestInfo !\"",
+            ),
+            (
+                quote!{
+                    "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]"
+                },
+                "\"getTestInfoById != get_TestStructsById\""
+            ),
         ];
 
         assert_transformations(arguments);
     }
+
+
 
     // TODO: this needs to be tackled
     // #[test]

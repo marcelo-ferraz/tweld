@@ -37,6 +37,7 @@ pub enum StringParserState {
     Modifiers
 }
 
+#[derive(Debug)]
 pub enum TokenParserState {    
     InsideBrackets,
     InsideGroup,

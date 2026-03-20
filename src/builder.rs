@@ -38,8 +38,12 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                                 let value = values[i]
                                     .split(pat)
                                     .map(|v|v.to_string())
-                                    .collect::<Vec<String>>();                                
+                                    .collect::<Vec<String>>();
+                                values.remove(i);
+                                println!("before {values:?}");                                
                                 values.splice(i..i, value);
+                                println!("after {values:?}");                                
+
                             },
                             Modifier::SplitAt(mid) => {
                                 let (left, right) = values[i].split_at(mid);                                    
