@@ -294,10 +294,10 @@ mod tests {
             //     quote! { @[(get - Test-Struct | split{"-"} | lower | join{"_"} )] },
             //     "get_test_struct",
             // ),
-            (
-                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
-                "get_Test_InfoById",
-            ),
+            // (
+            //     quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} ) ById] },
+            //     "get_Test_InfoById",
+            // ),
             // (
             //     quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
             //     "\"get_Test_InfoById\"",
@@ -306,10 +306,10 @@ mod tests {
             //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
             //     "\"get_Test_InfoById\"",
             // ),
-            // (
-            //     quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" },
-            //     "\"get_Test_Info-by-id\"",
-            // ),
+            (
+                quote! { @[("get-" Test - Struct | split{"-"} | lower | join{"_"}) -by-id] },
+                "\"get_test_struct-by-id\"",
+            ),
         ];
 
         assert_transformations(arguments);

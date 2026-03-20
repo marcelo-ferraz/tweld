@@ -29,6 +29,7 @@ pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
                         let dsl: TweldDsl = parse2(bracket_group.stream())?;
                         let result = build_string(dsl.parts).replace(" ", "");
 
+                        println!("render {:?}", dsl.render_as);
                         match dsl.render_as {
                             RenderAs::Identifier => {
                                 output.push(TokenTree::Ident(format_ident!("{}", result)));

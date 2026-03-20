@@ -6,6 +6,7 @@ use syn::{Ident, Lit, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserState, TokenParserState, TokenPart};
 
+#[derive(Debug)]
 pub enum RenderAs {
     StringLiteral,
     Identifier
@@ -150,10 +151,9 @@ fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>, 
     parts: &mut Vec<TokenPart>, 
     state: TokenParserState, 
-    mut word: String
+    mut word: String,
+    mut render_as: RenderAs
 ) -> syn::Result<RenderAs> {
-    let mut render_as = RenderAs::Identifier;
-
     while !input.is_empty() {
         println!("looping: {state:?} {parts:?}");
         match state {
@@ -162,7 +162,7 @@ fn parse_stream(
                     println!("entering group");
                     let group;
                     parenthesized!(group in input); 
-                    render_as = parse_stream(&group, parts, TokenParserState::InsideGroup, word.clone())?;
+                    render_as = parse_stream(&group, parts, TokenParserState::InsideGroup, word.clone(), render_as)?;
                     word.clear();
                     println!("leaving group");
                     continue;
@@ -170,18 +170,20 @@ fn parse_stream(
 
                 if input.peek(Token![|]) {
                     println!("entering modifiers");
-                    render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone())?;
+                    render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone(), render_as)?;
                     continue;
-                }
-                if input.peek(Token![-]) {
-                    input.parse::<Token![-]>()?;
-                    parts.push(TokenPart::Plain("-".to_string()));
                 }
 
                 if !word.is_empty() {
                     println!("pushing plain: `{word}`");
                     parts.push(TokenPart::Plain(word.clone()));
                     word.clear();
+                }
+
+                if input.peek(Token![-]) {
+                    input.parse::<Token![-]>()?;
+                    parts.push(TokenPart::Plain("-".to_string()));
+                    continue;
                 }
             
                 if input.peek(syn::Ident) {
@@ -211,7 +213,7 @@ fn parse_stream(
                 while !input.is_empty() {
                     if input.peek(Token![|]) {
                         println!("entering modifiers");
-                        render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone())?;
+                        render_as = parse_stream(&input, parts, TokenParserState::Modifiers, word.clone(), render_as)?;
                         word.clear();
                         continue;
                     }
@@ -272,7 +274,7 @@ fn parse_stream(
         parts.push(TokenPart::Plain(word.clone()));
         word.clear();
     }
-
+    println!("render_as: {render_as:?}");
     Ok(render_as)
 }
 
@@ -281,7 +283,7 @@ impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parts = Vec::new();        
         // let b = input
-        let render_as = parse_stream(input, &mut parts, TokenParserState::InsideBrackets, String::new())?;
+        let render_as = parse_stream(input, &mut parts, TokenParserState::InsideBrackets, String::new(), RenderAs::Identifier)?;
         println!("parts: {parts:?}");
         Ok(TweldDsl { render_as, parts })
     }
