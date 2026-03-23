@@ -152,126 +152,130 @@ fn parse_stream(
     mut dsl: TweldDsl,
     state: TokenParserState, 
     mut word: String,
+    mut indent: usize,
 ) -> syn::Result<TweldDsl> {
+    indent += 1; 
+    let sp = "-".repeat(indent);
     while !input.is_empty() {
-        println!("looping: {state:?} {:?}", dsl.parts);
+        println!("{sp}looping: {state:?} {:?}", dsl.parts);
         match state {
             TokenParserState::InsideBrackets => {
                 if input.peek(syn::token::Paren) { 
-                    println!("entering group");
+                    println!("{sp}entering group");
                     let group;
                     parenthesized!(group in input); 
-                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, word.clone())?;
+                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, word.clone(), indent)?;
                     word.clear();
-                    println!("leaving group");
+                    println!("{sp}leaving group");
                     continue;
                 }
 
                 if input.peek(Token![|]) {
-                    println!("entering modifiers");
-                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone())?;
+                    println!("{sp}entering modifiers");
+                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone(), indent)?;
+                    word.clear();
+                    println!("{sp}leaving modifiers");
                     continue;
                 }
 
                 if !word.is_empty() {
-                    println!("pushing plain: `{word}`");
+                    println!("{sp}pushing plain: `{word}`");
                     dsl.parts.push(TokenPart::Plain(word.clone()));
                     word.clear();
                 }
 
                 if input.peek(Token![-]) {
+                    println!("{sp}found token b -");
                     input.parse::<Token![-]>()?;
                     dsl.parts.push(TokenPart::Plain("-".to_string()));
                     continue;
                 }
             
                 if input.peek(syn::Ident) {
-                    println!("save ident b");
                     word = input
                         .parse::<Ident>()?
                         .to_string();
-                    println!("word: `{word}`");
-
+                    println!("{sp}save ident b: `{word}`");
                     continue;
                 }
 
                 if input.peek(syn::LitStr) {
-                    println!("save lit b");
                     word = input
                         .parse::<LitStr>()?
                         .value();  
                     dsl.render_as = RenderAs::StringLiteral;
-                    println!("word: `{word}`");
+                    println!("{sp}save lit b: `{word}`");
                     continue;                      
                 }
 
                 let ignored = input.parse::<proc_macro2::TokenTree>()?;
-                println!("ignored 1 {ignored:?}");
+                println!("{sp}ignored 1 {ignored:?}");
             },
             TokenParserState::InsideGroup => {                    
                 while !input.is_empty() {
                     if input.peek(Token![|]) {
-                        println!("entering modifiers");
-                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone())?;
+                        println!("{sp}entering modifiers");
+                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone(), indent)?;
                         word.clear();
                         continue;
                     }
 
                     if input.peek(Token![-]) {
+                        println!("{sp}found token b -");
                         input.parse::<Token![-]>()?;
                         word.push('-');
                         continue;
                     }
 
                     if input.peek(syn::Ident) {
-                        println!("acc ident g");
                         let value = input
                             .parse::<Ident>()?
                             .to_string();
                         
                         word.push_str(&value);
-                        println!("word: {word}");
+                        println!("{sp}acc ident g: {word}");
                         continue;
                     }
 
-                    if input.peek(syn::LitStr) {
-                        println!("acc lit g");
+                    if input.peek(syn::LitStr) {                        
                         let value = input
                             .parse::<LitStr>()?
                             .value();
+                    
                         word.push_str(&value);
+                        println!("{sp}acc lit g: {word}");
                         dsl.render_as = RenderAs::StringLiteral;
                         continue;
                     }
-                    
-                let ignored = input.parse::<proc_macro2::TokenTree>()?;
-                println!("ignored 2 {ignored:?}");
+
+                    let ignored = input.parse::<proc_macro2::TokenTree>()?;
+                    println!("{sp}ignored 2 {ignored:?}");
                 }
             },
             TokenParserState::Modifiers => {
-                println!("getting modifiers");
+                println!("{sp}getting modifiers");
                 let modifiers = get_modifiers(input)?;
                 dsl.parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
                 word.clear();
             },
         }
         
-        println!("end - word: `{word}`");
+        println!("{sp}end - word: `{word}`");
 
         if !word.is_empty() {
-            println!("inside loop push plain");
+            println!("{sp}inside loop push plain");
             dsl.parts.push(TokenPart::Plain(word.clone()));
             word.clear();
         }
     }
-    println!("end2 - word: `{word}`");
+    println!("{sp}end2 - word: `{word}`");
 
     if !word.is_empty() {
-        println!("outside loop push plain");
+        println!("{sp}outside loop push plain");
         dsl.parts.push(TokenPart::Plain(word.clone()));
         word.clear();
     }
-    println!("render_as: {:?}", dsl.render_as);
+    println!("{sp}render_as: {:?}", dsl.render_as);
     Ok(dsl)
 }
 
@@ -288,7 +292,8 @@ impl Parse for TweldDsl {
             input, 
             dsl, 
             TokenParserState::InsideBrackets, 
-            String::new()
+            String::new(),
+            0usize
         )?;
 
         println!("parts: {:?}", dsl.parts);
@@ -706,9 +711,9 @@ impl TweldDsl {
                                     ));
                                 }
                                 
-                                let times = try_num(&word, "start", input_lit)?;
+                                let times = try_num(&result, "start", input_lit)?;
 
-                                modifiers.push(Modifier::SplitAt(times));
+                                modifiers.push(Modifier::Repeat(times));
                             },
                             "split" => {
                                 let (result, is_str)  = extract_word(&mut clean_chars, "split", input_lit)?;
@@ -741,7 +746,9 @@ impl TweldDsl {
                             "padstart" | "padleft" | "padl" => {
                                 let (left_word, right_word) =
                                     extract_left_and_right(&mut clean_chars, &word, input_lit)?;
+                                
                                 let mut index = 0;
+
                                 if !left_word.is_empty() {
                                     index = try_num(&left_word, "start", input_lit)?;
                                 }
@@ -765,7 +772,9 @@ impl TweldDsl {
                             "padend" | "padright" | "padr" => {
                                 let (left_word, right_word) =
                                     extract_left_and_right(&mut clean_chars, &word, input_lit)?;
+                                
                                 let mut index = 0;
+                                
                                 if !left_word.is_empty() {
                                     index = try_num(&left_word, "start", input_lit)?;
                                 }
@@ -787,7 +796,7 @@ impl TweldDsl {
                                 ));                                
                             }
                         }
-
+println!("looping mods");
                         word.clear();
                     }
 

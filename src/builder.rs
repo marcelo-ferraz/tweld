@@ -33,7 +33,11 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                                 values[i] = values[i][start..end].to_string()                            
                             },
                             Modifier::Reverse => values[i] = values[i].chars().rev().collect::<String>(),
-                            Modifier::Repeat(times) => values[i] = values[i].repeat(times),
+                            Modifier::Repeat(times) => {
+                                println!("before {:?}", values[i]);
+                                values[i] = values[i].repeat(times);
+                                println!("after {:?}", values[i]); 
+                            },
                             Modifier::Split(ref pat) => {
                                 let value = values[i]
                                     .split(pat)
@@ -57,6 +61,7 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                             Modifier::PadStart(width, ref pat) => {
                                 let mut value = pat.repeat(width);
                                 value.push_str(&values[i]);
+                                println!("pads :`{value}`");
                                 values[i] = value;
                             },
                             Modifier::PadEnd(width, ref pat) => {

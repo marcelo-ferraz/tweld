@@ -26,7 +26,7 @@ pub enum Modifier {
 #[derive(Debug)]
 pub enum TokenPart {
     Literal(String),    
-    Plain(String),    
+    Plain(String),  
     Modified(Vec<String>, Vec<Modifier>),
 }
 

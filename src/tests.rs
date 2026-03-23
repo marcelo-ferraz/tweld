@@ -307,6 +307,130 @@ mod tests {
         assert_transformations(arguments);
     }
 
+    #[test]
+    fn should_apply_pad_on_left() {
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct | padstart{5, "_"} )] },
+                "_____get_Test_Struct",
+            ),
+            (
+                quote! { @[("get-" Test-Struct | padleft{5, "-"} )] },
+                "\"-----get-Test-Struct\"",
+            ),
+            (
+                quote! { @[(get "-" Test-Struct | padstart{5, "-"} | lower )] },
+                "\"-----get-test-struct\"",
+            ),
+            (
+                quote! { "@[(get- Test-Struct | padleft{5, \"-\"} )]" },
+                "\"-----get-Test-Struct\"",
+            ),
+            (
+                quote! { "@[(get - Test-Struct | padstart{5, '-'} | lower )]" },
+                "\"-----get-test-struct\"",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+        #[test]
+    fn should_apply_pad_on_right() {
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct | padend{5, "_"} )] },
+                "get_Test_Struct_____",
+            ),
+            (
+                quote! { @[("get-" Test-Struct | padEnd{5, "-"} )] },
+                "\"get-Test-Struct-----\"",
+            ),
+            (
+                quote! { @[(get "-" Test-Struct | padright{5, "-"} | lower )] },
+                "\"get-test-struct-----\"",
+            ),
+            (
+                quote! { "@[(get- Test-Struct | padRight{5, \"-\"} )]" },
+                "\"get-Test-Struct-----\"",
+            ),
+            (
+                quote! { "@[(get - Test-Struct | padend{5, '-'} | lower )]" },
+                "\"get-test-struct-----\"",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_repeat() {
+        let arguments = vec![
+            (
+                quote! { @[get_ Test_Struct | repeat{2}] },
+                "get_Test_StructTest_Struct",
+            ),
+            (
+                quote! { @[("get-" Test-Struct | repeat{2} )] },
+                "\"get-Test-Structget-Test-Struct\"",
+            ),
+            (
+                quote! { "@[(get- Test-Struct | padRight{5, \"-\"} )]" },
+                "\"get-Test-Struct-----\"",
+            ),
+            (
+                quote! { "@[(get - Test-Struct | padend{5, '-'} | lower )]" },
+                "\"get-test-struct-----\"",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_reverse() {
+        let arguments = vec![
+            (
+                quote! { @[get_ Test_Struct | reverse] },
+                "get_tcurtS_tseT",
+            ),
+            (
+                quote! { @[("get-" Test-Struct | reverse )] },
+                "\"tcurtS-tseT-teg\"",
+            ),
+            (
+                quote! { "@[(get- Test-Struct | reverse )]" },
+                "\"tcurtS-tseT-teg\"",
+            ),
+            (
+                quote! { @[("get-" TestStruct | reverse | pascal | reverse )] },
+                "\"geTTestStrucT\"",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_ignore_invalid_ident_chars() {
+        let arguments = vec![
+            (
+                quote! { @[(get "-" Test-Struct ^| repeat{2} | lower )] },
+                "\"get-test-structget-test-struct\"",
+            ),
+            (
+                quote! { @[(get > Test-Struct | camel )] },
+                "getTestStruct",
+            ),
+                        (
+                quote! { @[("get" -> Test-Struct ^| repeat{2} | lower )] },
+                "\"get-test-structget-test-struct\"",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
 
     #[test]
     fn should_chain_piped_modifiers() {
