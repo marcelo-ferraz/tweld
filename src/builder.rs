@@ -70,10 +70,12 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
                         }                    
                     }                    
                 }
+                println!("--before: {full}, {values:?}");
                 full.push_str(&values.join(""));
+                println!("--after: {full}");
             }
         }
     }
 
-    return full;
+    full.replace("r#", "")
 }

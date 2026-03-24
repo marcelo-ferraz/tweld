@@ -2,7 +2,7 @@ use std::iter::Peekable;
 use std::str::{Chars, FromStr};
 
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Lit, LitInt, LitStr, Token, parenthesized};
+use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserState, TokenParserState, TokenPart};
 
@@ -208,11 +208,23 @@ fn parse_stream(
                     continue;                      
                 }
 
+                if input.peek(syn::LitChar) {
+                    word = input
+                        .parse::<LitChar>()?
+                        .value()
+                        .to_string();  
+                    dsl.render_as = RenderAs::StringLiteral;
+                    println!("{sp}save lit b: `{word}`");
+                    continue;                      
+                }
+
                 let ignored = input.parse::<proc_macro2::TokenTree>()?;
                 println!("{sp}ignored 1 {ignored:?}");
             },
             TokenParserState::InsideGroup => {                    
                 while !input.is_empty() {
+                    println!("{sp}looping group");
+
                     if input.peek(Token![|]) {
                         println!("{sp}entering modifiers");
                         dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone(), indent)?;
@@ -221,9 +233,9 @@ fn parse_stream(
                     }
 
                     if input.peek(Token![-]) {
-                        println!("{sp}found token b -");
                         input.parse::<Token![-]>()?;
                         word.push('-');
+                        println!("{sp}found token g -: {word}");
                         continue;
                     }
 
@@ -237,13 +249,24 @@ fn parse_stream(
                         continue;
                     }
 
+                    if input.peek(syn::LitChar) {
+                        let value = input
+                            .parse::<LitChar>()?
+                            .value();
+                    
+                        word.push_str(&value.to_string());
+                        println!("{sp}acc litc g: {word}");
+                        dsl.render_as = RenderAs::StringLiteral;
+                        continue;
+                    }
+
                     if input.peek(syn::LitStr) {                        
                         let value = input
                             .parse::<LitStr>()?
                             .value();
                     
                         word.push_str(&value);
-                        println!("{sp}acc lit g: {word}");
+                        println!("{sp}acc lits g: {word}");
                         dsl.render_as = RenderAs::StringLiteral;
                         continue;
                     }
@@ -254,8 +277,31 @@ fn parse_stream(
             },
             TokenParserState::Modifiers => {
                 println!("{sp}getting modifiers");
-                let modifiers = get_modifiers(input)?;
-                dsl.parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                let mut modifiers = get_modifiers(input)?;
+                let target;
+                
+                if !word.is_empty() { 
+                    target = vec![word.clone()];
+                } else {
+                    let Some(last_part) = dsl.parts.pop() else {
+                        return Err(syn::Error::new(
+                            input.span(),
+                            "Modifiers need a target"
+                        ));
+                    };
+
+                    match last_part {
+                        TokenPart::Literal(text) => target = vec![text.clone()],
+                        TokenPart::Plain(text) => target = vec![text.clone()],
+                        TokenPart::Modified(items, mut prev_modifiers) => {
+                            target = items;
+                            prev_modifiers.append(&mut modifiers);
+                            modifiers = prev_modifiers;
+                        },
+                    }
+                }
+
+                dsl.parts.push(TokenPart::Modified(target, modifiers));
                 word.clear();
             },
         }

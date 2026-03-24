@@ -1,12 +1,11 @@
 use proc_macro2::{Delimiter, Group, TokenTree};
 use proc_macro2::{Literal, TokenStream};
-use quote::format_ident;
-use syn::{LitStr, parse2};
+use syn::{LitStr, parse_str, parse2};
 
 use crate::parser::RenderAs;
 use crate::{builder::build_string, parser::TweldDsl};
 
-pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
+pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
     let mut output = Vec::new();
     let mut tokens = input.into_iter().peekable();
 
@@ -31,9 +30,13 @@ pub fn scan_tokens(input: TokenStream) -> Result<TokenStream, syn::Error> {
                         
                         let result = build_string(dsl.parts).replace(" ", "");
 
-                        match dsl.render_as {
+                         match dsl.render_as {
                             RenderAs::Identifier => {
-                                output.push(TokenTree::Ident(format_ident!("{}", result)));
+                                println!("result: {result}");
+                                let identifier = parse_str::<proc_macro2::Ident>(&result)
+                                    .or_else(|_| parse_str::<proc_macro2::Ident>(&format!("r#{result}")))?;
+                                
+                                output.push(TokenTree::Ident(identifier));
                             },
                             RenderAs::StringLiteral => {
                                 output.push(TokenTree::Literal(Literal::string(&result)));

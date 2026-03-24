@@ -502,17 +502,184 @@ mod tests {
         assert_transformations(arguments);
     }
 
-
-
-    // TODO: this needs to be tackled
-    // #[test]
-    #[allow(dead_code)]
-    fn should_transform_with_reserved() {
-        let arguments = vec![
-            // quote! { @[(get_ Test | snek) - (Struct | snek) ] },
-            quote! { @[(loop Struct| snek) ] },
+    #[test]
+    fn should_handle_reserved_input_and_output() {
+        let arguments = vec![            
+            ( quote! { @[r#as]}, "r#as"),
+            ( quote! { @[r#break]}, "r#break"),
+            ( quote! { @[r#const]}, "r#const"),
+            ( quote! { @[r#continue]}, "r#continue"),
+            ( quote! { @[r#else]}, "r#else"),
+            ( quote! { @[r#enum]}, "r#enum"),
+            ( quote! { @[r#extern]}, "r#extern"),
+            ( quote! { @[r#false]}, "r#false"),
+            ( quote! { @[r#fn]}, "r#fn"),
+            ( quote! { @[r#for]}, "r#for"),
+            ( quote! { @[r#if]}, "r#if"),
+            ( quote! { @[r#impl]}, "r#impl"),
+            ( quote! { @[r#in]}, "r#in"),
+            ( quote! { @[r#let]}, "r#let"),
+            ( quote! { @[r#loop]}, "r#loop"),
+            ( quote! { @[r#match]}, "r#match"),
+            ( quote! { @[r#mod]}, "r#mod"),
+            ( quote! { @[r#move]}, "r#move"),
+            ( quote! { @[r#mut]}, "r#mut"),
+            ( quote! { @[r#pub]}, "r#pub"),
+            ( quote! { @[r#ref]}, "r#ref"),
+            ( quote! { @[r#return]}, "r#return"),
+            ( quote! { @[r#static]}, "r#static"),
+            ( quote! { @[r#struct]}, "r#struct"),
+            ( quote! { @[r#trait]}, "r#trait"),
+            ( quote! { @[r#true]}, "r#true"),
+            ( quote! { @[r#type]}, "r#type"),
+            ( quote! { @[r#unsafe]}, "r#unsafe"),
+            ( quote! { @[r#use]}, "r#use"),
+            ( quote! { @[r#where]}, "r#where"),
+            ( quote! { @[r#while]}, "r#while"),
+            ( quote! { @[r#async]}, "r#async"),
+            ( quote! { @[r#await]}, "r#await"),
+            ( quote! { @[r#dyn]}, "r#dyn"),
+            ( quote! { @[r#abstract]}, "r#abstract"),
+            ( quote! { @[r#become]}, "r#become"),
+            ( quote! { @[r#box]}, "r#box"),
+            ( quote! { @[r#do]}, "r#do"),
+            ( quote! { @[r#final]}, "r#final"),
+            ( quote! { @[r#macro]}, "r#macro"),
+            ( quote! { @[r#override]}, "r#override"),
+            ( quote! { @[r#priv]}, "r#priv"),
+            ( quote! { @[r#typeof]}, "r#typeof"),
+            ( quote! { @[r#unsized]}, "r#unsized"),
+            ( quote! { @[r#virtual]}, "r#virtual"),
+            ( quote! { @[r#yield]}, "r#yield"),
+            ( quote! { @[r#try]}, "r#try"),
         ];
 
-        assert_transformations_same_output(arguments, "loop-struct");
+        assert_transformations(arguments);
     }
+
+    #[test]
+    fn should_handle_reserved_input_not_output() {
+        let arguments = vec![            
+            ( quote! { @[r#as Not Reserved]}, "asNotReserved"),
+            ( quote! { @[r#break Not Reserved]}, "breakNotReserved"),
+            ( quote! { @[r#const Not Reserved]}, "constNotReserved"),
+            ( quote! { @[r#continue Not Reserved]}, "continueNotReserved"),
+            ( quote! { @[r#else Not Reserved]}, "elseNotReserved"),
+            ( quote! { @[r#enum Not Reserved]}, "enumNotReserved"),
+            ( quote! { @[r#extern Not Reserved]}, "externNotReserved"),
+            ( quote! { @[r#false Not Reserved]}, "falseNotReserved"),
+            ( quote! { @[r#fn Not Reserved]}, "fnNotReserved"),
+            ( quote! { @[r#for Not Reserved]}, "forNotReserved"),
+            ( quote! { @[r#if Not Reserved]}, "ifNotReserved"),
+            ( quote! { @[r#impl Not Reserved]}, "implNotReserved"),
+            ( quote! { @[r#in Not Reserved]}, "inNotReserved"),
+            ( quote! { @[r#let Not Reserved]}, "letNotReserved"),
+            ( quote! { @[r#loop Not Reserved]}, "loopNotReserved"),
+            ( quote! { @[r#match Not Reserved]}, "matchNotReserved"),
+            ( quote! { @[r#mod Not Reserved]}, "modNotReserved"),
+            ( quote! { @[r#move Not Reserved]}, "moveNotReserved"),
+            ( quote! { @[r#mut Not Reserved]}, "mutNotReserved"),
+            ( quote! { @[r#pub Not Reserved]}, "pubNotReserved"),
+            ( quote! { @[r#ref Not Reserved]}, "refNotReserved"),
+            ( quote! { @[r#return Not Reserved]}, "returnNotReserved"),
+            ( quote! { @[r#static Not Reserved]}, "staticNotReserved"),
+            ( quote! { @[r#struct Not Reserved]}, "structNotReserved"),
+            ( quote! { @[r#trait Not Reserved]}, "traitNotReserved"),
+            ( quote! { @[r#true Not Reserved]}, "trueNotReserved"),
+            ( quote! { @[r#type Not Reserved]}, "typeNotReserved"),
+            ( quote! { @[r#unsafe Not Reserved]}, "unsafeNotReserved"),
+            ( quote! { @[r#use Not Reserved]}, "useNotReserved"),
+            ( quote! { @[r#where Not Reserved]}, "whereNotReserved"),
+            ( quote! { @[r#while Not Reserved]}, "whileNotReserved"),
+            ( quote! { @[r#async Not Reserved]}, "asyncNotReserved"),
+            ( quote! { @[r#async Not Reserved]}, "asyncNotReserved"),
+            ( quote! { @[r#await Not Reserved]}, "awaitNotReserved"),
+            ( quote! { @[r#dyn Not Reserved]}, "dynNotReserved"),
+            ( quote! { @[r#abstract Not Reserved]}, "abstractNotReserved"),
+            ( quote! { @[r#become Not Reserved]}, "becomeNotReserved"),
+            ( quote! { @[r#box Not Reserved]}, "boxNotReserved"),
+            ( quote! { @[r#do Not Reserved]}, "doNotReserved"),
+            ( quote! { @[r#final Not Reserved]}, "finalNotReserved"),
+            ( quote! { @[r#macro Not Reserved]}, "macroNotReserved"),
+            ( quote! { @[r#override Not Reserved]}, "overrideNotReserved"),
+            ( quote! { @[r#priv Not Reserved]}, "privNotReserved"),
+            ( quote! { @[r#typeof Not Reserved]}, "typeofNotReserved"),
+            ( quote! { @[r#unsized Not Reserved]}, "unsizedNotReserved"),
+            ( quote! { @[r#virtual Not Reserved]}, "virtualNotReserved"),
+            ( quote! { @[r#yield Not Reserved]}, "yieldNotReserved"),
+            ( quote! { @[r#try Not Reserved]}, "tryNotReserved"),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_handle_normal_input_reserved_output() {
+        let arguments = vec![            
+            ( quote! { @[a s]}, "r#as"),
+            ( quote! { @[b reak]}, "r#break"),
+            ( quote! { @[c onst]}, "r#const"),
+            ( quote! { @[c ontinue]}, "r#continue"),
+            ( quote! { @[e lse]}, "r#else"),
+            ( quote! { @[e num]}, "r#enum"),
+            ( quote! { @[e xtern]}, "r#extern"),
+            ( quote! { @[f alse]}, "r#false"),
+            ( quote! { @[f n]}, "r#fn"),
+            ( quote! { @[f or]}, "r#for"),
+            ( quote! { @[i f]}, "r#if"),
+            ( quote! { @[i mpl]}, "r#impl"),
+            ( quote! { @[i n]}, "r#in"),
+            ( quote! { @[l et]}, "r#let"),
+            ( quote! { @[l oop]}, "r#loop"),
+            ( quote! { @[m atch]}, "r#match"),
+            ( quote! { @[m od]}, "r#mod"),
+            ( quote! { @[m ove]}, "r#move"),
+            ( quote! { @[m ut]}, "r#mut"),
+            ( quote! { @[p ub]}, "r#pub"),
+            ( quote! { @[r ef]}, "r#ref"),
+            ( quote! { @[r eturn]}, "r#return"),
+            ( quote! { @[s tatic]}, "r#static"),
+            ( quote! { @[s truct]}, "r#struct"),
+            ( quote! { @[t rait]}, "r#trait"),
+            ( quote! { @[t rue]}, "r#true"),
+            ( quote! { @[t ype]}, "r#type"),
+            ( quote! { @[u nsafe]}, "r#unsafe"),
+            ( quote! { @[u se]}, "r#use"),
+            ( quote! { @[w here]}, "r#where"),
+            ( quote! { @[w hile]}, "r#while"),
+            ( quote! { @[a sync]}, "r#async"),
+            ( quote! { @[a wait]}, "r#await"),
+            ( quote! { @[d yn]}, "r#dyn"),
+            ( quote! { @[a bstract]}, "r#abstract"),
+            ( quote! { @[b ecome]}, "r#become"),
+            ( quote! { @[b ox]}, "r#box"),
+            ( quote! { @[d o]}, "r#do"),
+            ( quote! { @[f inal]}, "r#final"),
+            ( quote! { @[m acro]}, "r#macro"),
+            ( quote! { @[o verride]}, "r#override"),
+            ( quote! { @[p riv]}, "r#priv"),
+            ( quote! { @[t ypeof]}, "r#typeof"),
+            ( quote! { @[u nsized]}, "r#unsized"),
+            ( quote! { @[v irtual]}, "r#virtual"),
+            ( quote! { @[y ield]}, "r#yield"),
+            ( quote! { @[t ry]}, "r#try"),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn handling_forbidden_keywords() {
+        let arguments = vec![            
+            // `crate` cannot be a raw identifier
+            ( quote! { @[not cra te]}, "notcrate"),            
+            // // self` cannot be a raw identifier 
+            ( quote! { @[__ selfie | replace{"ie",""}]}, "__self"),
+            // `super` cannot be a raw identifier 
+            ( quote! { @[(sup er-duper)|camel] }, "superDuper"),
+        ];
+        assert_transformations(arguments);
+    }
+
+
 }
