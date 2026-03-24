@@ -227,6 +227,16 @@ fn parse_stream(
                 while !input.is_empty() {
                     println!("{sp}looping group");
 
+                    if input.peek(syn::token::Paren) { 
+                        println!("{sp}entering group");
+                        let group;
+                        parenthesized!(group in input); 
+                        dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, indent)?;
+                        
+                        println!("{sp}leaving group");
+                        continue;
+                    }
+
                     if input.peek(Token![|]) {
                         println!("{sp}entering modifiers");
                         if !word.is_empty() {
