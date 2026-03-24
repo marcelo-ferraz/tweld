@@ -150,12 +150,12 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
 fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>, 
     mut dsl: TweldDsl,
-    state: TokenParserState, 
-    mut word: String,
+    state: TokenParserState,     
     mut indent: usize,
 ) -> syn::Result<TweldDsl> {
     indent += 1; 
     let sp = "-".repeat(indent);
+    let mut word: String = String::new();
     while !input.is_empty() {
         println!("{sp}looping: {state:?} {:?}", dsl.parts);
         match state {
@@ -164,16 +164,15 @@ fn parse_stream(
                     println!("{sp}entering group");
                     let group;
                     parenthesized!(group in input); 
-                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, word.clone(), indent)?;
-                    word.clear();
+                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, indent)?;
+                    
                     println!("{sp}leaving group");
                     continue;
                 }
 
                 if input.peek(Token![|]) {
                     println!("{sp}entering modifiers");
-                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone(), indent)?;
-                    word.clear();
+                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, indent)?;                    
                     println!("{sp}leaving modifiers");
                     continue;
                 }
@@ -192,29 +191,32 @@ fn parse_stream(
                 }
             
                 if input.peek(syn::Ident) {
-                    word = input
+                    let result = input
                         .parse::<Ident>()?
                         .to_string();
-                    println!("{sp}save ident b: `{word}`");
+                    println!("{sp}save ident b: `{result}`");
+                    dsl.parts.push(TokenPart::Plain(result));
                     continue;
                 }
 
                 if input.peek(syn::LitStr) {
-                    word = input
+                    let result = input
                         .parse::<LitStr>()?
                         .value();  
+                    println!("{sp}save lit b: `{result}`");
                     dsl.render_as = RenderAs::StringLiteral;
-                    println!("{sp}save lit b: `{word}`");
+                    dsl.parts.push(TokenPart::Plain(result));
                     continue;                      
                 }
 
                 if input.peek(syn::LitChar) {
-                    word = input
+                    let result = input
                         .parse::<LitChar>()?
                         .value()
                         .to_string();  
+                    println!("{sp}save lit b: `{result}`");
                     dsl.render_as = RenderAs::StringLiteral;
-                    println!("{sp}save lit b: `{word}`");
+                    dsl.parts.push(TokenPart::Plain(result));
                     continue;                      
                 }
 
@@ -227,8 +229,11 @@ fn parse_stream(
 
                     if input.peek(Token![|]) {
                         println!("{sp}entering modifiers");
-                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, word.clone(), indent)?;
+                        if !word.is_empty() {
+                            dsl.parts.push(TokenPart::Plain(word.clone()));
+                        }
                         word.clear();
+                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, indent)?;
                         continue;
                     }
 
@@ -277,31 +282,16 @@ fn parse_stream(
             },
             TokenParserState::Modifiers => {
                 println!("{sp}getting modifiers");
-                let mut modifiers = get_modifiers(input)?;
-                let target;
                 
-                if !word.is_empty() { 
-                    target = vec![word.clone()];
-                } else {
-                    let Some(last_part) = dsl.parts.pop() else {
-                        return Err(syn::Error::new(
-                            input.span(),
-                            "Modifiers need a target"
-                        ));
-                    };
-
-                    match last_part {
-                        TokenPart::Literal(text) => target = vec![text.clone()],
-                        TokenPart::Plain(text) => target = vec![text.clone()],
-                        TokenPart::Modified(items, mut prev_modifiers) => {
-                            target = items;
-                            prev_modifiers.append(&mut modifiers);
-                            modifiers = prev_modifiers;
-                        },
-                    }
-                }
-
-                dsl.parts.push(TokenPart::Modified(target, modifiers));
+                let Some(target) = dsl.parts.pop() else {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "Modifiers need a target"
+                    ));
+                };                
+                
+                let modifiers = get_modifiers(input)?;
+                dsl.parts.push(TokenPart::Modified(Box::new(target), modifiers));
                 word.clear();
             },
         }
@@ -337,8 +327,7 @@ impl Parse for TweldDsl {
         dsl = parse_stream(
             input, 
             dsl, 
-            TokenParserState::InsideBrackets, 
-            String::new(),
+            TokenParserState::InsideBrackets,
             0usize
         )?;
 
@@ -572,13 +561,19 @@ impl TweldDsl {
 
                         if !mod_target.is_empty() {
                             if modifiers.len() > 0 {
-                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                                parts.push(TokenPart::Modified(
+                                    Box::new(TokenPart::Plain(word.clone())), 
+                                    modifiers)
+                                );
                             } else {
                                 parts.push(TokenPart::Plain(mod_target.clone()));
                             }
                         } else if !word.is_empty() {
                             if modifiers.len() > 0 {
-                                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                                parts.push(TokenPart::Modified(
+                                    Box::new(TokenPart::Plain(word.clone())), 
+                                    modifiers)
+                                );
                             } else {
                                 parts.push(TokenPart::Plain(word.clone()));
                             }
@@ -634,14 +629,20 @@ impl TweldDsl {
                         println!("leaving modifiers2");
 
                         if !mod_target.is_empty() {
-                            if modifiers.len() > 0 {
-                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                            if modifiers.len() > 0 {                                
+                                parts.push(TokenPart::Modified(
+                                    Box::new(TokenPart::Plain(mod_target.clone())), 
+                                    modifiers)
+                                );
                             } else {
                                 parts.push(TokenPart::Plain(mod_target.clone()));
                             }
                         } else if !word.is_empty() {
                             if modifiers.len() > 0 {
-                                parts.push(TokenPart::Modified(vec![word.clone()], modifiers));
+                                parts.push(TokenPart::Modified(
+                                    Box::new(TokenPart::Plain(mod_target.clone())), 
+                                    modifiers)
+                                );
                             } else {
                                 parts.push(TokenPart::Plain(word.clone()));
                             }
@@ -851,7 +852,10 @@ println!("looping mods");
 
                         if !mod_target.is_empty() {
                             if modifiers.len() > 0 {
-                                parts.push(TokenPart::Modified(vec![mod_target.clone()], modifiers));
+                                parts.push(TokenPart::Modified(
+                                    Box::new(TokenPart::Plain(mod_target.clone())), 
+                                    modifiers)
+                                );
                             } else {
                                 parts.push(TokenPart::Plain(mod_target.clone()));
                             }

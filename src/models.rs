@@ -27,7 +27,7 @@ pub enum Modifier {
 pub enum TokenPart {
     Literal(String),    
     Plain(String),  
-    Modified(Vec<String>, Vec<Modifier>),
+    Modified(Box<TokenPart>, Vec<Modifier>),
 }
 
 pub enum StringParserState {

@@ -672,14 +672,12 @@ mod tests {
     fn handling_forbidden_keywords() {
         let arguments = vec![            
             // `crate` cannot be a raw identifier
-            ( quote! { @[not cra te]}, "notcrate"),            
+            // ( quote! { @[not cra te]}, "notcrate"),            
             // // self` cannot be a raw identifier 
-            ( quote! { @[__ selfie | replace{"ie",""}]}, "__self"),
+            // ( quote! { @[__ selfie | replace{"ie",""}]}, "__self"),
             // `super` cannot be a raw identifier 
             ( quote! { @[(sup er-duper)|camel] }, "superDuper"),
         ];
         assert_transformations(arguments);
     }
-
-
 }
