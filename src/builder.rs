@@ -16,17 +16,39 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
 fn build_from_part(part: TokenPart) -> String {
     match part {
         TokenPart::Literal(value) => return value.clone(),
-        TokenPart::Plain(value) => return value.replace(" ", ""),
+        TokenPart::Plain(value) => return value.clone(),
+        TokenPart::Grouped(grouped_parts) => {
+            let word = grouped_parts
+                .iter()
+                .map(|sub_part| build_from_part(sub_part.clone()))
+                .collect::<String>();
+            word
+        },
         TokenPart::Modified(target, modifiers) => {            
             match *target {
                 TokenPart::Literal(value) => modify(value, &modifiers),
                 TokenPart::Plain(value) => modify(value, &modifiers),
+                TokenPart::Grouped(grouped_parts) => {
+                let value = grouped_parts
+                    .iter()
+                    .map(|sub_part| build_from_part(sub_part.clone()))
+                    .collect::<String>();
+                println!("grouped result: {value}");
+                
+                modify(value, &modifiers)
+            },
                 TokenPart::Modified(token_part, nested_modifiers) => {
+                    println!("token_part: {token_part:?}");
                     let nested_result = modify(
                         build_from_part(*token_part), 
                         &nested_modifiers
                     );
-                    modify(nested_result, &modifiers)                    
+                    println!("nested_result: `{nested_result}`");
+
+                    let rr= modify(nested_result, &modifiers);
+                    println!("result: {rr}");
+
+                    rr                    
                 },
             }
         }
@@ -43,14 +65,22 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
             match modified {
                 Modifier::Singular => { if values[i].ends_with('s') { values[i].pop(); } },
                 Modifier::Plural => { if !values[i].ends_with('s') { values[i].push_str("s"); } },
-                Modifier::Lowercase => values[i] = values[i].to_lowercase(),
+                Modifier::Lowercase => {
+                    println!("before lower {}", values[i]);
+                    values[i] = values[i].to_lowercase();
+                    println!("after lower {}", values[i]);
+                },
                 Modifier::Uppercase => values[i] = values[i].to_uppercase(),
                 Modifier::PascalCase => values[i] = values[i].to_pascal_case(),
                 Modifier::LowerCamelCase => values[i] = values[i].to_lower_camel_case(),
                 Modifier::SnakeCase => values[i] = values[i].to_snake_case(),
                 Modifier::KebabCase => values[i] = values[i].to_kebab_case(),
                 Modifier::ShoutySnakeCase => values[i] = values[i].to_shouty_snake_case(),
-                Modifier::TitleCase => values[i] = values[i].to_title_case(),
+                Modifier::TitleCase => {
+                    println!("before {:?}", values[i]);
+                    values[i] = values[i].to_title_case();
+                    println!("after {:?}", values[i]);
+                },
                 Modifier::ShoutyKebabCase => values[i] = values[i].to_shouty_kebab_case(),
                 Modifier::TrainCase => values[i] = values[i].to_train_case(),
                 Modifier::Replace(from, to) => values[i] = values[i].replace(from, to),

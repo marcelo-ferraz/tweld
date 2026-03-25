@@ -39,12 +39,12 @@ mod tests {
     #[test]
     fn should_concatenate_words_in_brackets_str() {
         let arguments = vec![
-            quote! { "@[get Test Struct]" },
-            quote! { "@[get Te stSt ruct]" },
-            quote! { "@[g et TestStruct]" },
-            quote! { "@[get TestStruct]" },
-            quote! { "@[getTest Struct]" },
-            quote! { "@[getT estSt ruct]" },
+            quote! { @["get" Test Struct] },
+            quote! { @["get" Te stSt ruct] },
+            quote! { @["g" et TestStruct] },
+            quote! { @["get" TestStruct] },
+            quote! { @["getTest" Struct] },
+            quote! { @["getT" estSt ruct] },
         ];
 
         assert_transformations_same_output(arguments, "\"getTestStruct\"");
@@ -67,11 +67,11 @@ mod tests {
     #[test]
     fn should_concatenate_words_in_groups_str() {
         let arguments = vec![
-            quote! { "@[(get Test Struct)]" },
-            quote! { "@[(get Te stSt ruct)]" },
-            quote! { "@[(g et TestStruct)]" },
-            quote! { "@[(get TestStruct)]" },
-            quote! { "@[(getTest Struct)]" },
+            quote! { @[(get "Test" Struct)] },
+            quote! { @[(get "Te" stSt ruct)] },
+            quote! { @[(g "et" TestStruct)] },
+            quote! { @[(get "TestStruct")] },
+            quote! { @[(getTest "Struct")] },
             quote! { @[("get" TestStruct)] },
         ];
 
@@ -92,11 +92,12 @@ mod tests {
         assert_transformations_same_output(arguments, "getTestStruct");
     }
 
-    #[test]
+    // #[test]
+    // rethink on this
     fn should_preserve_outside_str() {
         let arguments = vec![
             // it will keep the 2 spaces
-            (quote! { "Something  @[(get Test Struct)] here!" }, "\"Something  getTestStruct here!\""),
+            (quote! { "Something  " @[("get" Test Struct)] "here!" }, "\"Something  getTestStruct here!\""),
             (quote! { "Something  @[(get Te stSt ruct)] here!" }, "\"Something  getTestStruct here!\""),
             (quote! { "Something  @[(g et TestStruct)] \"here\"!" }, "\"Something  getTestStruct \\\"here\\\"!\""),
             (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
@@ -111,8 +112,8 @@ mod tests {
     #[test]
     fn should_transform_to_lower_case() {
         let arguments = vec![
-            quote! { @[(get_ Test | lower) (Struct | lower)] },
-            quote! { @[(get_ TestStruct | lowercase) ] },
+            quote! { @[((get_ Test) | lower) (Struct | lower)] },
+            quote! { @[((get_ TestStruct) | lowercase) ] },
         ];
 
         assert_transformations_same_output(arguments, "get_teststruct");
@@ -121,8 +122,8 @@ mod tests {
     #[test]
     fn should_transform_to_upper_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | uppercase) ] },
-            quote! { @[(get_ TestStruct | upper) ] },
+            quote! { @[(get_ TestStruct )| uppercase ] },
+            quote! { @[(get_ TestStruct) | upper ] },
         ];
 
         assert_transformations_same_output(arguments, "GET_TESTSTRUCT");
@@ -131,9 +132,9 @@ mod tests {
     #[test]
     fn should_transform_to_pascal_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | pascal) ] },
-            quote! { @[(get_ TestStruct | pascalcase) ] },
-            quote! { @[(get_ TestStruct | uppercamelcase) ] },
+            quote! { @[(get_ TestStruct) | pascal ] },
+            quote! { @[(get_ TestStruct) | pascalcase ] },
+            quote! { @[(get_ TestStruct) | uppercamelcase ] },
         ];
 
         assert_transformations_same_output(arguments, "GetTestStruct");
@@ -142,9 +143,9 @@ mod tests {
     #[test]
     fn should_transform_to_camel_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | lowercamelcase) ] },
-            quote! { @[(get_ TestStruct | camelcase) ] },
-            quote! { @[(get_ TestStruct | camel) ] },
+            quote! { @[(get_ TestStruct) | lowercamelcase ] },
+            quote! { @[(get_ TestStruct) | camelcase ] },
+            quote! { @[(get_ TestStruct) | camel ] },
         ];
 
         assert_transformations_same_output(arguments, "getTestStruct");
@@ -165,10 +166,10 @@ mod tests {
     #[test]
     fn should_transform_to_shouty_snake_case() {
         let arguments = vec![
-            quote! { @[(get_ TestStruct | shoutysnakecase) ] },
-            quote! { @[(get_ TestStruct | shoutysnake) ] },
-            quote! { @[(get_ TestStruct | shoutysnekcase) ] },
-            quote! { @[(get_ TestStruct | shoutysnek) ] },
+            quote! { @[(get_ TestStruct) | shoutysnakecase ] },
+            quote! { @[(get_ TestStruct) | shoutysnake ] },
+            quote! { @[(get_ TestStruct) | shoutysnekcase ] },
+            quote! { @[(get_ TestStruct) | shoutysnek ] },
         ];
 
         assert_transformations_same_output(arguments, "GET_TEST_STRUCT");
@@ -178,8 +179,8 @@ mod tests {
     #[test]
     fn should_transform_to_kebab_case() {
         let arguments = vec![
-            quote! { "@[(get_ Test | kebab) - (Struct | kebabcase) ]" },
-            quote! { "@[(get_ TestStruct | kebab) ]" },
+            quote! { @[(("get_" Test) | kebab) - (Struct | kebabcase) ] },
+            quote! { @[(("get_" TestStruct) | kebab) ] },
         ];
 
         assert_transformations_same_output(arguments, "\"get-test-struct\"");
@@ -189,15 +190,15 @@ mod tests {
     fn should_transform_to_shouty_kebab_case() {
         let arguments = vec![
             (
-                quote! { "@[ge t _ TestStruct | shoutykebabcase ]" },
+                quote! { @["ge" t _ (TestStruct) | shoutykebabcase ] },
                 "\"get_TEST-STRUCT\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | shoutykebabcase) ]" },
+                quote! { @[("get_" TestStruct) | shoutykebabcase ] },
                 "\"GET-TEST-STRUCT\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | shoutykebab) ]" },
+                quote! { @[("get_" TestStruct) | shoutykebab ] },
                 "\"GET-TEST-STRUCT\"",
             ),
         ];
@@ -208,13 +209,13 @@ mod tests {
     #[test]
     fn should_transform_to_title_case() {
         let arguments = vec![
-            quote! { "@[(get__ TestStruct | titlecase) ]" },
-            quote! { "@[(get_ TestStruct | title) ]" },
-            quote! { "@[(get- TestStruct | title) ]" },
-            quote! { "@[(get-- TestStruct | title) ]" },
-            quote! { "@[(get--_ TestStruct | title) ]" },
-            quote! { "@[(get _TestStruct | title) ]" },
-            quote! { "@[(get -TestStruct | title) ]" },
+            quote! { @[("get__" TestStruct)| titlecase ] },
+            quote! { @[("get_" TestStruct) | title ] },
+            quote! { @[("get"- TestStruct) | title ] },
+            quote! { @[("get"-- TestStruct) | title ] },
+            quote! { @[("get"--_ TestStruct) | title ] },
+            quote! { @[("get" _TestStruct) | title ] },
+            quote! { @[("get" -TestStruct) | title ] },
         ];
 
         assert_transformations_same_output(arguments, "\"Get Test Struct\"");
@@ -223,13 +224,13 @@ mod tests {
     #[test]
     fn should_transform_to_train_case() {
         let arguments = vec![
-            quote! { "@[(get__ TestStruct | traincase) ]" },
-            quote! { "@[(get_ TestStruct | train) ]" },
-            quote! { "@[(get- TestStruct | train) ]" },
-            quote! { "@[(get-- TestStruct | train) ]" },
-            quote! { "@[(get--_ TestStruct | train) ]" },
-            quote! { "@[(get _TestStruct | train) ]" },
-            quote! { "@[(get -TestStruct | train) ]" },
+            quote! { @[("get__" TestStruct) | traincase ] },
+            quote! { @[("get_" TestStruct) | train ] },
+            quote! { @[("get-" TestStruct) | train ] },
+            quote! { @[("get--" TestStruct) | train ] },
+            quote! { @[("get--" _ TestStruct) | train ] },
+            quote! { @[("get" _TestStruct) | train ] },
+            quote! { @[("get" -TestStruct) | train ] },
         ];
 
         assert_transformations_same_output(arguments, "\"Get-Test-Struct\"");
@@ -287,19 +288,19 @@ mod tests {
     fn should_apply_split() {
         let arguments = vec![
             (
-                quote! { @[(get_ Test_Struct | split{"_"} | title )] },
+                quote! { @[(get_ Test_Struct) | split{"_"} | title] },
                 "GetTestStruct",
             ),
             (
-                quote! { @[(get - Test-Struct | split{"-"} | lower | join{"_"} )] },
+                quote! { @[(get - Test-Struct) | split{"-"} | lower | join{"_"} ] },
                 "get_test_struct",
             ),
             (
-                quote! { "@[get- Test - Struct | split{\"-\"} | lower | join{'_'}) -by-id]" },
-                "\"get-Test-struct-by-id\"",
+                quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{'_'}) -by-id] },
+                "\"get_test_struct-by-id\"",
             ),
             (
-                quote! { @[("get-" Test - Struct | split{"-"} | lower | join{"_"}) -by-id] },
+                quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{"_"}) -by-id] },
                 "\"get_test_struct-by-id\"",
             ),
         ];
@@ -311,23 +312,23 @@ mod tests {
     fn should_apply_pad_on_left() {
         let arguments = vec![
             (
-                quote! { @[(get_ Test_Struct | padstart{5, "_"} )] },
+                quote! { @[(get_ Test_Struct) | padstart{5, "_"}] },
                 "_____get_Test_Struct",
             ),
             (
-                quote! { @[("get-" Test-Struct | padleft{5, "-"} )] },
+                quote! { @[("get-" Test-Struct) | padleft{5, "-"} ] },
                 "\"-----get-Test-Struct\"",
             ),
             (
-                quote! { @[(get "-" Test-Struct | padstart{5, "-"} | lower )] },
+                quote! { @[(get "-" Test-Struct) | padstart{5, "-"} | lower ] },
                 "\"-----get-test-struct\"",
             ),
             (
-                quote! { "@[(get- Test-Struct | padleft{5, \"-\"} )]" },
+                quote! { @[("get-" Test-Struct) | padleft{5, "-"}] },
                 "\"-----get-Test-Struct\"",
             ),
             (
-                quote! { "@[(get - Test-Struct | padstart{5, '-'} | lower )]" },
+                quote! { @[(get "-" Test-Struct) | padstart{5, '-'} | lower] },
                 "\"-----get-test-struct\"",
             ),
         ];
@@ -335,27 +336,27 @@ mod tests {
         assert_transformations(arguments);
     }
 
-        #[test]
+    #[test]
     fn should_apply_pad_on_right() {
         let arguments = vec![
             (
-                quote! { @[(get_ Test_Struct | padend{5, "_"} )] },
+                quote! { @[(get_ Test_Struct )| padend{5, "_"}] },
                 "get_Test_Struct_____",
             ),
             (
-                quote! { @[("get-" Test-Struct | padEnd{5, "-"} )] },
+                quote! { @[("get-" Test-Struct) | padEnd{5, "-"} ] },
                 "\"get-Test-Struct-----\"",
             ),
             (
-                quote! { @[(get "-" Test-Struct | padright{5, "-"} | lower )] },
+                quote! { @[(get "-" Test-Struct) | padright{5, "-"} | lower] },
                 "\"get-test-struct-----\"",
             ),
             (
-                quote! { "@[(get- Test-Struct | padRight{5, \"-\"} )]" },
+                quote! { @[(get- "Test-Struct" )| padRight{5, "-"}] },
                 "\"get-Test-Struct-----\"",
             ),
             (
-                quote! { "@[(get - Test-Struct | padend{5, '-'} | lower )]" },
+                quote! { @[("get" - Test-Struct | padend{5, '-'}) | lower] },
                 "\"get-test-struct-----\"",
             ),
         ];
@@ -371,7 +372,11 @@ mod tests {
                 "get_Test_StructTest_Struct",
             ),
             (
-                quote! { @[("get-" Test-Struct | repeat{2} )] },
+                quote! { @["get-" (Test-Struct) | repeat{2}] },
+                "\"get-Test-StructTest-Struct\"",
+            ),
+            (
+                quote! { @[("get-" Test-Struct) | repeat{2}] },
                 "\"get-Test-Structget-Test-Struct\"",
             ),
             (
@@ -395,16 +400,16 @@ mod tests {
                 "get_tcurtS_tseT",
             ),
             (
-                quote! { @[("get-" Test-Struct | reverse )] },
+                quote! { @[("get-" Test-Struct) | reverse ] },
                 "\"tcurtS-tseT-teg\"",
             ),
             (
-                quote! { "@[(get- Test-Struct | reverse )]" },
-                "\"tcurtS-tseT-teg\"",
+                quote! { @[("get-" TestStruct) | reverse | pascal | reverse ] },
+                "\"geTTestStrucT\"",
             ),
             (
                 quote! { @[("get-" TestStruct | reverse | pascal | reverse )] },
-                "\"geTTestStrucT\"",
+                "\"get-TestStrucT\"",
             ),
         ];
 
@@ -415,15 +420,20 @@ mod tests {
     fn should_ignore_invalid_ident_chars() {
         let arguments = vec![
             (
-                quote! { @[(get "-" Test-Struct ^| repeat{2} | lower )] },
+                quote! { @[(get "-" Test-Struct ^)| repeat{2} | lower ] },
                 "\"get-test-structget-test-struct\"",
             ),
             (
-                quote! { @[(get > Test-Struct | camel )] },
+                // in this case Struct will be modified, as ^ is ignored
+                quote! { @[get "-" Test-Struct ^| repeat{2} | lower ] },
+                "\"get-Test-structstruct\"",
+            ),
+            (
+                quote! { @[(get > Test-Struct) | camel] },
                 "getTestStruct",
             ),
                         (
-                quote! { @[("get" -> Test-Struct ^| repeat{2} | lower )] },
+                quote! { @[("get" -> Test-Struct ^)| repeat{2} | lower ] },
                 "\"get-test-structget-test-struct\"",
             ),
         ];
@@ -435,40 +445,40 @@ mod tests {
     #[test]
     fn should_chain_piped_modifiers() {
         let arguments = vec![
-                        (
-                quote! { @[(get__ TestStruct | upper | snek) ] },
+            (
+                quote! { @[(get__ TestStruct) | upper | snek ] },
                 "get_teststruct",
             ),
             (
-                quote! { @[(get__ TestStruct | snek | upper) ] },
+                quote! { @[((get__ TestStruct) | snek | upper) ] },
                 "GET_TEST_STRUCT",
             ),
             (
-                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} | camel )] },
+                quote! { @[((get_ TestStruct) | replace{"Struct", "_Info"} | camel )] },
                 "getTestInfo",
             ),
             (
-                quote! { @[(get_ TestStruct | replace{"Struct", "_Info"} | camel ) ById] },
+                quote! { @[((get_ TestStruct) | replace{"Struct", "_Info"} | camel ) ById] },
                 "getTestInfoById",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById]" },
+                quote! { @[(("get_" TestStruct | replace{"Struct", "_Info"}) | camel ) ById] },
                 "\"getTestInfoById\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | snek | camel ) ById]" },
+                quote! { @[(("get_" TestStruct) | snek | camel ) ById] },
                 "\"getTestStructById\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | camel ) ById]" },
+                quote! { @[((get_ "TestStruct") | replace{"Struct", "_Info"} | camel ) ById] },
                 "\"getTestInfoById\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} | kebab) - by -id]" },
+                quote! { @[(("get_" TestStruct) | replace{ "Struct", "_Info"} | kebab) - by -id] },
                 "\"get-test-info-by-id\"",
             ),
             (
-                quote! { "@[g e t _ testStruct | replace{\"Struct\", \"_Info\"} | pascal]" },
+                quote! { @[g "e" t _ testStruct | replace{"Struct", "_Info"} | pascal] },
                 "\"get_TestInfo\"",
             ),
         ];

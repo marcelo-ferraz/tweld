@@ -1,3 +1,4 @@
+use std::clone;
 use std::iter::Peekable;
 use std::str::{Chars, FromStr};
 
@@ -6,14 +7,14 @@ use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
 
 use crate::models::{Modifier, StringParserState, TokenParserState, TokenPart};
 
-#[derive(Debug)]
-pub enum RenderAs {
+#[derive(Debug, Clone)]
+pub enum RenderType {
     StringLiteral,
     Identifier
 }
 
 pub struct TweldDsl {
-    pub render_as: RenderAs,
+    pub render_type: RenderType,
     pub parts: Vec<TokenPart>,
 }
 
@@ -90,6 +91,9 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
                 let lit: Lit = args.parse()?; // Consume the literal
         
                 match lit {
+                    Lit::Char(sep) => {
+                        modifiers.push(Modifier::Split(sep.value().to_string()));
+                    },
                     Lit::Str(sep) => {
                         modifiers.push(Modifier::Split(sep.value()));
                     }
@@ -106,8 +110,12 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
             "join" => {
                 let args;
                 syn::braced!(args in content);
-                let sep = args.parse::<LitStr>()?;                        
-                modifiers.push(Modifier::Join(sep.value()));
+                let sep = if args.peek(LitStr) {
+                    args.parse::<LitStr>()?.value()
+                } else {
+                    args.parse::<LitChar>()?.value().to_string()
+                };                        
+                modifiers.push(Modifier::Join(sep));
             },
             "padstart" | "padleft" | "padl" => {
                 let args;
@@ -118,9 +126,13 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
 
                 args.parse::<Token![,]>()?;
 
-                let pad = args.parse::<LitStr>()?;
+                let pad = if args.peek(LitStr) {
+                    args.parse::<LitStr>()?.value()
+                } else {
+                    args.parse::<LitChar>()?.value().to_string()
+                };
 
-                modifiers.push(Modifier::PadStart(size, pad.value()));
+                modifiers.push(Modifier::PadStart(size, pad));
             },
             "padend" | "padright" | "padr" => {
                 let args;
@@ -131,9 +143,13 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
 
                 args.parse::<Token![,]>()?;
 
-                let pad = args.parse::<LitStr>()?;
+                let pad = if args.peek(LitStr) {
+                    args.parse::<LitStr>()?.value()
+                } else {
+                    args.parse::<LitChar>()?.value().to_string()
+                };
 
-                modifiers.push(Modifier::PadEnd(size, pad.value()));
+                modifiers.push(Modifier::PadEnd(size, pad));
             },
 
             _ => {
@@ -155,20 +171,29 @@ fn parse_stream(
 ) -> syn::Result<TweldDsl> {
     indent += 1; 
     let sp = "-".repeat(indent);
-    let mut word: String = String::new();
+    let mut words: Vec<String> = vec![];    
     while !input.is_empty() {
         println!("{sp}looping: {state:?} {:?}", dsl.parts);
         match state {
             TokenParserState::InsideBrackets => {
                 if input.peek(syn::token::Paren) { 
-                    println!("{sp}entering group");
-                    let group;
-                    parenthesized!(group in input); 
-                    dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, indent)?;
-                    
-                    println!("{sp}leaving group");
-                    continue;
-                }
+                        println!("{sp}entering group");
+                        let group;
+                        parenthesized!(group in input);
+                        let mut grouped_dsl = TweldDsl {
+                            render_type: dsl.render_type.clone(),
+                            parts: vec![],
+                        }; 
+                        grouped_dsl = parse_stream(&group, grouped_dsl, TokenParserState::InsideGroup, indent)?;
+                        
+                        dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
+                        if let RenderType::StringLiteral = grouped_dsl.render_type {
+                            dsl.render_type = RenderType::StringLiteral;
+                        }
+
+                        println!("{sp}leaving group b");
+                        continue;
+                    }
 
                 if input.peek(Token![|]) {
                     println!("{sp}entering modifiers");
@@ -177,16 +202,17 @@ fn parse_stream(
                     continue;
                 }
 
-                if !word.is_empty() {
-                    println!("{sp}pushing plain: `{word}`");
-                    dsl.parts.push(TokenPart::Plain(word.clone()));
-                    word.clear();
-                }
-
                 if input.peek(Token![-]) {
                     println!("{sp}found token b -");
                     input.parse::<Token![-]>()?;
                     dsl.parts.push(TokenPart::Plain("-".to_string()));
+                    continue;
+                }
+
+                if input.peek(Token![_]) {
+                    println!("{sp}found token b _");
+                    input.parse::<Token![_]>()?;
+                    dsl.parts.push(TokenPart::Plain("_".to_string()));
                     continue;
                 }
             
@@ -204,7 +230,7 @@ fn parse_stream(
                         .parse::<LitStr>()?
                         .value();  
                     println!("{sp}save lit b: `{result}`");
-                    dsl.render_as = RenderAs::StringLiteral;
+                    dsl.render_type = RenderType::StringLiteral;
                     dsl.parts.push(TokenPart::Plain(result));
                     continue;                      
                 }
@@ -215,7 +241,7 @@ fn parse_stream(
                         .value()
                         .to_string();  
                     println!("{sp}save lit b: `{result}`");
-                    dsl.render_as = RenderAs::StringLiteral;
+                    dsl.render_type = RenderType::StringLiteral;
                     dsl.parts.push(TokenPart::Plain(result));
                     continue;                      
                 }
@@ -230,27 +256,51 @@ fn parse_stream(
                     if input.peek(syn::token::Paren) { 
                         println!("{sp}entering group");
                         let group;
-                        parenthesized!(group in input); 
-                        dsl = parse_stream(&group, dsl, TokenParserState::InsideGroup, indent)?;
+                        parenthesized!(group in input);
+                        let mut grouped_dsl = TweldDsl {
+                            render_type: dsl.render_type.clone(),
+                            parts: vec![],
+                        }; 
+                        grouped_dsl = parse_stream(&group, grouped_dsl, TokenParserState::InsideGroup, indent)?;
                         
-                        println!("{sp}leaving group");
+                        dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
+                        if let RenderType::StringLiteral = grouped_dsl.render_type {
+                            dsl.render_type = RenderType::StringLiteral;
+                        }
+
+                        println!("{sp}leaving group g {:?}", dsl.parts);
                         continue;
                     }
 
                     if input.peek(Token![|]) {
-                        println!("{sp}entering modifiers");
-                        if !word.is_empty() {
-                            dsl.parts.push(TokenPart::Plain(word.clone()));
+                        println!("{sp}entering modifiers {words:?}");
+
+                        if !words.is_empty() {
+
+                            let Some(last) = words.pop() else {
+                                todo!();
+                            };
+                        
+                            dsl.parts.push(TokenPart::Plain(words.join("")));
+                            words.clear();
+                            dsl.parts.push(TokenPart::Plain(last));
                         }
-                        word.clear();
+
                         dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, indent)?;
                         continue;
                     }
 
                     if input.peek(Token![-]) {
                         input.parse::<Token![-]>()?;
-                        word.push('-');
-                        println!("{sp}found token g -: {word}");
+                        words.push("-".to_string());
+                        println!("{sp}found token g -: {words:?}");
+                        continue;
+                    }
+
+                    if input.peek(Token![_]) {
+                        println!("{sp}found token g _");
+                        input.parse::<Token![_]>()?;
+                        dsl.parts.push(TokenPart::Plain("_".to_string()));
                         continue;
                     }
 
@@ -259,8 +309,8 @@ fn parse_stream(
                             .parse::<Ident>()?
                             .to_string();
                         
-                        word.push_str(&value);
-                        println!("{sp}acc ident g: {word}");
+                        words.push(value);
+                        println!("{sp}acc ident g: {words:?}");
                         continue;
                     }
 
@@ -269,9 +319,9 @@ fn parse_stream(
                             .parse::<LitChar>()?
                             .value();
                     
-                        word.push_str(&value.to_string());
-                        println!("{sp}acc litc g: {word}");
-                        dsl.render_as = RenderAs::StringLiteral;
+                        words.push(value.to_string());
+                        println!("{sp}acc litc g: {words:?}");
+                        dsl.render_type = RenderType::StringLiteral;
                         continue;
                     }
 
@@ -280,9 +330,9 @@ fn parse_stream(
                             .parse::<LitStr>()?
                             .value();
                     
-                        word.push_str(&value);
-                        println!("{sp}acc lits g: {word}");
-                        dsl.render_as = RenderAs::StringLiteral;
+                        words.push(value);
+                        println!("{sp}acc lits g: {words:?}");
+                        dsl.render_type = RenderType::StringLiteral;
                         continue;
                     }
 
@@ -302,26 +352,26 @@ fn parse_stream(
                 
                 let modifiers = get_modifiers(input)?;
                 dsl.parts.push(TokenPart::Modified(Box::new(target), modifiers));
-                word.clear();
             },
         }
         
-        println!("{sp}end - word: `{word}`");
+        println!("{sp}end - words: `{words:?}`");
 
-        if !word.is_empty() {
+        if !words.is_empty() {
             println!("{sp}inside loop push plain");
-            dsl.parts.push(TokenPart::Plain(word.clone()));
-            word.clear();
+            dsl.parts.push(TokenPart::Plain(words.join("")));
+            words.clear();
         }
     }
-    println!("{sp}end2 - word: `{word}`");
+    println!("{sp}end2 - word: `{words:?}`");
 
-    if !word.is_empty() {
+    if !words.is_empty() {
         println!("{sp}outside loop push plain");
-        dsl.parts.push(TokenPart::Plain(word.clone()));
-        word.clear();
+        dsl.parts.push(TokenPart::Plain(words.join("")));
+        words.clear();
     }
-    println!("{sp}render_as: {:?}", dsl.render_as);
+    println!("{sp}render_as: {:?}", dsl.render_type);
+
     Ok(dsl)
 }
 
@@ -329,7 +379,7 @@ fn parse_stream(
 impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut dsl = TweldDsl { 
-            render_as: RenderAs::Identifier, 
+            render_type: RenderType::Identifier, 
             parts: Vec::new(),
         };
         
@@ -919,7 +969,7 @@ println!("looping mods");
         }
 
         Ok(TweldDsl { 
-            render_as: RenderAs::StringLiteral, 
+            render_type: RenderType::StringLiteral, 
             parts 
         })
     }

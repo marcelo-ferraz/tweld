@@ -2,7 +2,7 @@ use proc_macro2::{Delimiter, Group, TokenTree};
 use proc_macro2::{Literal, TokenStream};
 use syn::{LitStr, parse_str, parse2};
 
-use crate::parser::RenderAs;
+use crate::parser::RenderType;
 use crate::{builder::build_string, parser::TweldDsl};
 
 pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
@@ -26,19 +26,20 @@ pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
                         };
                                                 
                         let dsl: TweldDsl = parse2(bracket_group.stream())?;                        
-                        println!("render {:?}", dsl.render_as);
+                        println!("render {:?}", dsl.render_type);
                         
-                        let result = build_string(dsl.parts).replace(" ", "");
+                        let result = build_string(dsl.parts);
 
-                         match dsl.render_as {
-                            RenderAs::Identifier => {
+                         match dsl.render_type {
+                            RenderType::Identifier => {
                                 println!("result: {result}");
+                                let result = result.replace(" ", "");
                                 let identifier = parse_str::<proc_macro2::Ident>(&result)
                                     .or_else(|_| parse_str::<proc_macro2::Ident>(&format!("r#{result}")))?;
                                 
                                 output.push(TokenTree::Ident(identifier));
                             },
-                            RenderAs::StringLiteral => {
+                            RenderType::StringLiteral => {
                                 output.push(TokenTree::Literal(Literal::string(&result)));
                             },
                         }

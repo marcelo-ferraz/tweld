@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Modifier {
     Singular,
     Plural,
@@ -23,10 +23,11 @@ pub enum Modifier {
     PadEnd(usize, String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TokenPart {
     Literal(String),    
-    Plain(String),  
+    Plain(String),
+    Grouped(Vec<TokenPart>),  
     Modified(Box<TokenPart>, Vec<Modifier>),
 }
 
