@@ -1,6 +1,6 @@
 use proc_macro2::{Delimiter, Group, TokenTree};
 use proc_macro2::{Literal, TokenStream};
-use syn::{LitStr, parse_str, parse2};
+use syn::{parse_str, parse2};
 
 use crate::parser::RenderType;
 use crate::{builder::build_string, parser::TweldDsl};
@@ -55,27 +55,6 @@ pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
                 let mut new_group = Group::new(g.delimiter(), inner_expanded);
                 new_group.set_span(g.span());
                 output.push(TokenTree::Group(new_group));
-            }
-
-            TokenTree::Literal(lit) => {
-                let tokens = quote::quote!(#lit);
-
-                let Ok(lit_str) = parse2::<LitStr>(tokens) else {
-                    output.push(TokenTree::Literal(lit));
-                    continue;
-                };
-
-                let dsl = TweldDsl::parse_lit_str(&lit_str)?;
-
-                println!("parts: {:?}", dsl.parts);
-                let result = build_string(dsl.parts);
-                println!("result: {result:?}");
-
-                let mut new_lit = TokenTree::Literal(Literal::string(&result));
-                new_lit.set_span(lit.span());
-
-                output.push(new_lit);
-                continue;
             }
 
             t => {

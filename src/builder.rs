@@ -15,7 +15,6 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
 
 fn build_from_part(part: TokenPart) -> String {
     match part {
-        TokenPart::Literal(value) => return value.clone(),
         TokenPart::Plain(value) => return value.clone(),
         TokenPart::Grouped(grouped_parts) => {
             let word = grouped_parts
@@ -26,7 +25,6 @@ fn build_from_part(part: TokenPart) -> String {
         },
         TokenPart::Modified(target, modifiers) => {            
             match *target {
-                TokenPart::Literal(value) => modify(value, &modifiers),
                 TokenPart::Plain(value) => modify(value, &modifiers),
                 TokenPart::Grouped(grouped_parts) => {
                 let value = grouped_parts

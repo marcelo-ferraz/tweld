@@ -25,17 +25,9 @@ pub enum Modifier {
 
 #[derive(Debug, Clone)]
 pub enum TokenPart {
-    Literal(String),    
     Plain(String),
     Grouped(Vec<TokenPart>),  
     Modified(Box<TokenPart>, Vec<Modifier>),
-}
-
-pub enum StringParserState {
-    Idle,
-    InsideBrackets,
-    InsideGroup,
-    Modifiers
 }
 
 #[derive(Debug)]
