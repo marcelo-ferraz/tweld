@@ -92,18 +92,19 @@ mod tests {
         assert_transformations_same_output(arguments, "getTestStruct");
     }
 
-    // #[test]
+    #[test]
     // rethink on this
     fn should_preserve_outside_str() {
         let arguments = vec![
             // it will keep the 2 spaces
-            (quote! { "Something  " @[("get" Test Struct)] "here!" }, "\"Something  getTestStruct here!\""),
-            (quote! { "Something  @[(get Te stSt ruct)] here!" }, "\"Something  getTestStruct here!\""),
-            (quote! { "Something  @[(g et TestStruct)] \"here\"!" }, "\"Something  getTestStruct \\\"here\\\"!\""),
-            (quote! { "Something  @[(\"get TestStruct)\"] here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
-            (quote! { "Something  \"@[(get TestStruct)]\" here!" }, "\"Something  \\\"getTestStruct\\\" here!\""),
-            (quote! { "Something - @[(getTest) (Struct)]Here!" }, "\"Something - getTestStructHere!\""),
-            (quote! { "Some thing  @[getT estSt ruct]here!" }, "\"Some thing  getTestStructhere!\""),
+            (quote! { @["Something  " ("get" Test Struct) " here!"]  }, "\"Something  getTestStruct here!\""),
+            
+            (quote! { @["Something " (get Te stSt ruct) " here!"] }, "\"Something getTestStruct here!\""),
+            (quote! { @["Something  " (g et TestStruct) " \"here\"!"] }, "\"Something  getTestStruct \\\"here\\\"!\""),
+            (quote! { @["Something  (\"" get TestStruct "\") here!"] }, "\"Something  (\\\"getTestStruct\\\") here!\""),
+            (quote! { @["Something  \"" (get TestStruct) "\" here!"] }, "\"Something  \\\"getTestStruct\\\" here!\""),
+            (quote! { @["Something - " (getTestStruct) " Here!"] }, "\"Something - getTestStruct Here!\""),
+            (quote! { @["Some thing  " (getT estSt ruct) "here!"] }, "\"Some thing  getTestStructhere!\""),
         ];
 
         assert_transformations(arguments);
@@ -268,16 +269,16 @@ mod tests {
                 "get_Test_InfoById",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{'Struct', '_Info'} ) ById]" },
+                quote! { @[(("get_" TestStruct) | replace{"Struct", "_Info"} ) ById] },
                 "\"get_Test_InfoById\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"} ) ById]" },
+                quote! { @[(("get_" TestStruct) | replace{"Struct", "_Info"} ) ById] },
                 "\"get_Test_InfoById\"",
             ),
             (
-                quote! { "@[(get_ TestStruct | replace{\"Struct\", \"_Info\"}) - by -id]" },
-                "\"get_Test_Info-by-id\"",
+                quote! { @[("get_ TestStruct" | replace{"Struct", "_Info"}) - by -id] },
+                "\"get_ Test_Info-by-id\"",
             ),
         ];
 
@@ -380,11 +381,11 @@ mod tests {
                 "\"get-Test-Structget-Test-Struct\"",
             ),
             (
-                quote! { "@[(get- Test-Struct | padRight{5, \"-\"} )]" },
+                quote! { @[(get "-" Test-Struct) | padRight{5, "-"} ] },
                 "\"get-Test-Struct-----\"",
             ),
             (
-                quote! { "@[(get - Test-Struct | padend{5, '-'} | lower )]" },
+                quote! { @[("get" - Test-Struct) | padend{5, '-'} | lower ] },
                 "\"get-test-struct-----\"",
             ),
         ];
@@ -491,19 +492,19 @@ mod tests {
         let arguments = vec![
             (
                 quote! {
-                    "The functions are diferent @[get TestStruct] != @[(get TestStruct | replace {'Struct', 'Info'}| replace{' ', \"\"} )] !"
+                    @["The functions are diferent " get TestStruct " != " ((get TestStruct )| replace {"Struct", "Info"}| replace{" ", ""}) " !"] 
                 },
                 "\"The functions are diferent getTestStruct != getTestInfo !\"",
             ),
             (
                 quote! {
-                    "The functions are diferent @[(get TestStruct)] != @[(get TestStruct | replace {'Struct', 'Info'})] !"
+                    @["The functions are diferent " (get TestStruct) " != " ((get TestStruct) | replace {"Struct", "Info"}) " !"] 
                 },
                 "\"The functions are diferent getTestStruct != getTestInfo !\"",
             ),
             (
                 quote!{
-                    "@[(get_ TestStruct | replace{'Struct', '_Info'} | camel ) ById] != @[(_get_ TestStruct | plural | substr{1,} ) ById]"
+                    @[(("get_" TestStruct) | replace{"Struct", "_Info"} | camel ) ById " != " ((_get_ TestStruct) | plural | substr{1,}) ById]
                 },
                 "\"getTestInfoById != get_TestStructsById\""
             ),
