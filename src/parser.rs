@@ -1,29 +1,25 @@
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
 
-use crate::models::{Modifier, TokenParserState, TokenPart};
+use crate::models::{Modifier, RenderType, TokenParserState, TokenPart};
 
-#[derive(Debug, Clone)]
-pub enum RenderType {
-    StringLiteral,
-    Identifier
-}
+const MAX_DEPTH: usize = 20;
 
 pub struct TweldDsl {
     pub render_type: RenderType,
     pub parts: Vec<TokenPart>,
 }
 
-fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modifier>> {
+fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modifier>> {
     let mut modifiers = Vec::new();
     
-    while content.peek(Token![|]) {
-        content.parse::<Token![|]>()?;
-        if content.is_empty() {
+    while input.peek(Token![|]) {
+        input.parse::<Token![|]>()?;
+        if input.is_empty() {
             break;
         }
 
-        let mod_name: Ident = content.parse()?;
+        let mod_name: Ident = input.parse()?;
         match mod_name.to_string().to_lowercase().as_str() {
             "singular" => modifiers.push(Modifier::Singular),
             "plural" => modifiers.push(Modifier::Plural),
@@ -47,15 +43,15 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
             "traincase" | "train" => modifiers.push(Modifier::TrainCase),
             "replace" => {
                 let args;
-                syn::braced!(args in content);
-                let from = args.parse::<LitStr>()?;
+                syn::braced!(args in input);
+                let from = parse_lit_str_char(&args)?;                
                 args.parse::<Token![,]>()?;
-                let to = args.parse::<LitStr>()?;
-                modifiers.push(Modifier::Replace(from.value(), to.value()));
+                let to = parse_lit_str_char(&args)?;
+                modifiers.push(Modifier::Replace(from, to));
             }
             "substr" | "substring" => {
                 let args;
-                syn::braced!(args in content);
+                syn::braced!(args in input);
                 let from = args
                     .parse::<LitInt>()
                     .and_then(|val| val.base10_parse::<usize>())
@@ -73,7 +69,7 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
             "reverse" | "rev" => modifiers.push(Modifier::Reverse),
             "repeat" | "rep" | "times" => {
                 let args;
-                syn::braced!(args in content); 
+                syn::braced!(args in input); 
                 let times = args
                     .parse::<LitInt>()
                     .and_then(|val| val.base10_parse::<usize>())?;
@@ -82,9 +78,9 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
             },
             "split" => {
                 let args;
-                syn::braced!(args in content);
-
-                let lit: Lit = args.parse()?; // Consume the literal
+                syn::braced!(args in input);
+                
+                let lit: Lit = args.parse()?;
         
                 match lit {
                     Lit::Char(sep) => {
@@ -99,55 +95,26 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
                     }
                     _ =>  return Err(syn::Error::new(
                         mod_name.span(),
-                        format!("Expected a string or integer literal {:?}", mod_name.span()),
+                        format!("Expected a string, char, or integer literal {:?}", mod_name.span()),
                     ))
                 }                                                
             },
             "join" => {
                 let args;
-                syn::braced!(args in content);
-                let sep = if args.peek(LitStr) {
-                    args.parse::<LitStr>()?.value()
-                } else {
-                    args.parse::<LitChar>()?.value().to_string()
-                };                        
+                syn::braced!(args in input);
+                let sep = parse_lit_str_char(&args)?;                        
                 modifiers.push(Modifier::Join(sep));
             },
             "padstart" | "padleft" | "padl" => {
-                let args;
-                syn::braced!(args in content);
-                let size = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())?;
-
-                args.parse::<Token![,]>()?;
-
-                let pad = if args.peek(LitStr) {
-                    args.parse::<LitStr>()?.value()
-                } else {
-                    args.parse::<LitChar>()?.value().to_string()
-                };
+                let (size, pad) = parse_pad_args(input)?;
 
                 modifiers.push(Modifier::PadStart(size, pad));
             },
             "padend" | "padright" | "padr" => {
-                let args;
-                syn::braced!(args in content);
-                let size = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())?;
-
-                args.parse::<Token![,]>()?;
-
-                let pad = if args.peek(LitStr) {
-                    args.parse::<LitStr>()?.value()
-                } else {
-                    args.parse::<LitChar>()?.value().to_string()
-                };
+                let (size, pad) = parse_pad_args(input)?;
 
                 modifiers.push(Modifier::PadEnd(size, pad));
-            },
-
+            },            
             _ => {
                 return Err(syn::Error::new(
                     mod_name.span(),
@@ -159,41 +126,88 @@ fn get_modifiers(content: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modif
     Ok(modifiers)
 }
 
+fn parse_lit_str_char(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<String> {
+    let sep = if args.peek(LitStr) {
+        args.parse::<LitStr>()?.value()
+    } else {
+        args.parse::<LitChar>()?.value().to_string()
+    };
+    Ok(sep)
+}
+
+fn parse_pad_args(input: &syn::parse::ParseBuffer<'_>) -> Result<(usize, String), syn::Error> {
+    let args;
+    syn::braced!(args in input);
+    let size = args
+        .parse::<LitInt>()
+        .and_then(|val| val.base10_parse::<usize>())?;
+    args.parse::<Token![,]>()?;
+    let pad = if args.peek(LitStr) {
+        args.parse::<LitStr>()?.value()
+    } else {
+        args.parse::<LitChar>()?.value().to_string()
+    };
+    Ok((size, pad))
+}
+
+fn parse_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
+    let group;
+    parenthesized!(group in input);
+    let mut grouped_dsl = TweldDsl {
+        render_type: dsl.render_type.clone(),
+        parts: vec![],
+    };
+    grouped_dsl = parse_stream(
+        &group, grouped_dsl, 
+        TokenParserState::InsideGroup, 
+        depth
+    )?;
+
+    dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
+    
+    if let RenderType::StringLiteral = grouped_dsl.render_type {
+        dsl.render_type = RenderType::StringLiteral;
+    }
+
+    Ok(())
+}
+
 fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>, 
     mut dsl: TweldDsl,
     state: TokenParserState,     
-    mut indent: usize,
+    mut depth: usize,
 ) -> syn::Result<TweldDsl> {
-    indent += 1; 
-    let sp = "-".repeat(indent);
+
+    if depth >= MAX_DEPTH {
+        return Err(syn::Error::new(
+            input.span(), "Maximum nesting reached!"
+        ));
+    }
+
+    depth += 1; 
+    let sp = "-".repeat(depth);
     let mut words: Vec<String> = vec![];    
     while !input.is_empty() {
         println!("{sp}looping: {state:?} {:?}", dsl.parts);
         match state {
             TokenParserState::InsideBrackets => {
                 if input.peek(syn::token::Paren) { 
-                        println!("{sp}entering group");
-                        let group;
-                        parenthesized!(group in input);
-                        let mut grouped_dsl = TweldDsl {
-                            render_type: dsl.render_type.clone(),
-                            parts: vec![],
-                        }; 
-                        grouped_dsl = parse_stream(&group, grouped_dsl, TokenParserState::InsideGroup, indent)?;
-                        
-                        dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
-                        if let RenderType::StringLiteral = grouped_dsl.render_type {
-                            dsl.render_type = RenderType::StringLiteral;
-                        }
+                    println!("{sp}entering group");
 
-                        println!("{sp}leaving group b");
-                        continue;
-                    }
+                    parse_group(input, &mut dsl, depth)?;
+
+                    println!("{sp}leaving group b");
+                    continue;
+                }
 
                 if input.peek(Token![|]) {
                     println!("{sp}entering modifiers");
-                    dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, indent)?;                    
+                    dsl = parse_stream(
+                        &input,
+                        dsl, 
+                        TokenParserState::Modifiers, 
+                        depth)?;                    
                     println!("{sp}leaving modifiers");
                     continue;
                 }
@@ -251,18 +265,8 @@ fn parse_stream(
 
                     if input.peek(syn::token::Paren) { 
                         println!("{sp}entering group");
-                        let group;
-                        parenthesized!(group in input);
-                        let mut grouped_dsl = TweldDsl {
-                            render_type: dsl.render_type.clone(),
-                            parts: vec![],
-                        }; 
-                        grouped_dsl = parse_stream(&group, grouped_dsl, TokenParserState::InsideGroup, indent)?;
                         
-                        dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
-                        if let RenderType::StringLiteral = grouped_dsl.render_type {
-                            dsl.render_type = RenderType::StringLiteral;
-                        }
+                        parse_group(input, &mut dsl, depth)?;
 
                         println!("{sp}leaving group g {:?}", dsl.parts);
                         continue;
@@ -282,7 +286,7 @@ fn parse_stream(
                             dsl.parts.push(TokenPart::Plain(last));
                         }
 
-                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, indent)?;
+                        dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, depth)?;
                         continue;
                     }
 
@@ -346,7 +350,7 @@ fn parse_stream(
                     ));
                 };                
                 
-                let modifiers = get_modifiers(input)?;
+                let modifiers = parse_modifiers(input)?;
                 dsl.parts.push(TokenPart::Modified(Box::new(target), modifiers));
             },
         }
@@ -371,7 +375,6 @@ fn parse_stream(
     Ok(dsl)
 }
 
-
 impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut dsl = TweldDsl { 
@@ -379,7 +382,6 @@ impl Parse for TweldDsl {
             parts: Vec::new(),
         };
         
-        // let b = input
         dsl = parse_stream(
             input, 
             dsl, 

@@ -37,3 +37,10 @@ pub enum TokenParserState {
     Modifiers
 }
 
+
+#[derive(Debug, Clone)]
+pub enum RenderType {
+    StringLiteral,
+    Identifier
+}
+

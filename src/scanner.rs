@@ -2,7 +2,7 @@ use proc_macro2::{Delimiter, Group, TokenTree};
 use proc_macro2::{Literal, TokenStream};
 use syn::{parse_str, parse2};
 
-use crate::parser::RenderType;
+use crate::models::RenderType;
 use crate::{builder::build_string, parser::TweldDsl};
 
 pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
