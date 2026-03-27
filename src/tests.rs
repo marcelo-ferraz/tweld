@@ -313,24 +313,46 @@ mod tests {
     fn should_apply_pad_on_left() {
         let arguments = vec![
             (
-                quote! { @[(get_ Test_Struct) | padstart{5, "_"}] },
+                quote! { @[(get_ Test_Struct) | padstart{20, "_"}] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
                 "_____get_Test_Struct",
             ),
             (
+                quote! { @[("get-" Test-Struct) | padleft{20, "-"} ] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
+                "\"-----get-Test-Struct\"",
+            ),
+            (
+                quote! { @[(get "-" Test-Struct) | padstart{20, "-"} | lower ] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
+                "\"-----get-test-struct\"",
+            ),
+            (
+                quote! { @[(get_ Test_Struct) | padstart{5, "_"}] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
+                "get_Test_Struct",
+            ),
+            (
                 quote! { @[("get-" Test-Struct) | padleft{5, "-"} ] },
-                "\"-----get-Test-Struct\"",
+                /*
+                   0         1         2         3
+                   0123456789012345678901234567890 */
+                "\"get-Test-Struct\"",
             ),
             (
-                quote! { @[(get "-" Test-Struct) | padstart{5, "-"} | lower ] },
-                "\"-----get-test-struct\"",
-            ),
-            (
-                quote! { @[("get-" Test-Struct) | padleft{5, "-"}] },
-                "\"-----get-Test-Struct\"",
-            ),
-            (
-                quote! { @[(get "-" Test-Struct) | padstart{5, '-'} | lower] },
-                "\"-----get-test-struct\"",
+                quote! { @[(get "-" Test-Struct) | padstart{16, "-"} | lower ] },
+                /*
+                   0         1         2         3
+                   0123456789012345678901234567890 */
+                "\"-get-test-struct\"",
             ),
         ];
 
@@ -341,24 +363,46 @@ mod tests {
     fn should_apply_pad_on_right() {
         let arguments = vec![
             (
-                quote! { @[(get_ Test_Struct )| padend{5, "_"}] },
+                quote! { @[(get_ Test_Struct) | padend{20, "_"}] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
                 "get_Test_Struct_____",
             ),
             (
-                quote! { @[("get-" Test-Struct) | padEnd{5, "-"} ] },
+                quote! { @[("get-" Test-Struct) | padright{20, "-"} ] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
                 "\"get-Test-Struct-----\"",
             ),
             (
-                quote! { @[(get "-" Test-Struct) | padright{5, "-"} | lower] },
+                quote! { @[(get "-" Test-Struct) | padend{20, "-"} | lower ] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
                 "\"get-test-struct-----\"",
             ),
             (
-                quote! { @[(get- "Test-Struct" )| padRight{5, "-"}] },
-                "\"get-Test-Struct-----\"",
+                quote! { @[(get_ Test_Struct) | padr{5, "_"}] },
+                /*
+                 0         1         2         3
+                 0123456789012345678901234567890 */
+                "get_Test_Struct",
             ),
             (
-                quote! { @[("get" - Test-Struct | padend{5, '-'}) | lower] },
-                "\"get-test-struct-----\"",
+                quote! { @[("get-" Test-Struct) | padend{5, "-"} ] },
+                /*
+                   0         1         2         3
+                   0123456789012345678901234567890 */
+                "\"get-Test-Struct\"",
+            ),
+            (
+                quote! { @[(get "-" Test-Struct) | padRight{16, "-"} | lower ] },
+                /*
+                   0         1         2         3
+                   0123456789012345678901234567890 */
+                "\"get-test-struct-\"",
             ),
         ];
 
@@ -373,20 +417,12 @@ mod tests {
                 "get_Test_StructTest_Struct",
             ),
             (
-                quote! { @["get-" (Test-Struct) | repeat{2}] },
+                quote! { @["get-" (Test-Struct) | rep{2}] },
                 "\"get-Test-StructTest-Struct\"",
             ),
             (
-                quote! { @[("get-" Test-Struct) | repeat{2}] },
+                quote! { @[("get-" Test-Struct) | times{2}] },
                 "\"get-Test-Structget-Test-Struct\"",
-            ),
-            (
-                quote! { @[(get "-" Test-Struct) | padRight{5, "-"} ] },
-                "\"get-Test-Struct-----\"",
-            ),
-            (
-                quote! { @[("get" - Test-Struct) | padend{5, '-'} | lower ] },
-                "\"get-test-struct-----\"",
             ),
         ];
 

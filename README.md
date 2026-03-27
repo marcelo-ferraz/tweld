@@ -31,16 +31,16 @@ use weld::render_names;
 
 weld! {
     // 1. Basic interpolation
-    pub struct @[(Users | singular | pascal)] {
+    pub struct @[Users | singular | pascal] {
         pub id: i64,
     }
 
     // 2. Inline string replacement and casing
-    impl @[(Users | singular | PascalCase)] {
+    impl @[Users | singular | PascalCase] {
         
         // Generates: pub fn get_user_profile_by_id(id: i64)
-        pub fn @[get_ (UserProfiles | replace{'s', ''}  snakecase) _by_id](id: i64) {
-            println!("Fetching @[(Users | singular | lower)] {}...", id);
+        pub fn @[((get_ UserProfiles) | replace{'s', ''}  snakecase) _by_id](id: i64) {
+            println!("Fetching @[Users | singular | lower] {}...", id);
         }
     }
 }
@@ -82,12 +82,19 @@ This crate comes with some modifiers that offer more complex operations that can
  It replaces all non-overlapping occurrences of a `pattern`, with a `replacement` string.
 ```rust
 // will render const a_small_ident = "";
-weld!(const @[(a long ident | replace{"long","small"}|snek)] = "";);
+weld!(const @[a long ident | replace{"long","small"}|snek] = "";);
 ``` 
 ---
 #### `substr`,  `substring`
 This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied. Both indexes are optional.
 ```rust
 // will render const a_long_ident = "";
-weld!(const @[(a long identifier | substr{,9}|snek)] = "";);
+weld!(const @[a long identifier | substr{,9}|snek] = "";);
 ```  
+---
+`reverse`, `rev`
+`repeat`, `rep`, `times`
+`split`
+`join`
+`padstart`, `padleft`, `padl`
+`padend`, `padright`, `padr`

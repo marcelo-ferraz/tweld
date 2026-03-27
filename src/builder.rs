@@ -114,13 +114,23 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     values.push(result);
                 },
                 Modifier::PadStart(width, pat) => {
-                    let mut value = pat.repeat(*width);
-                    value.push_str(&values[i]);
-                    println!("pads :`{value}`");
-                    values[i] = value;
+                    let width: i32 = (*width as i32) - (values[i].len() as i32);
+                    println!("the final width {width}");
+                    if width > 0 {
+                        let mut val = pat.repeat(width as usize);
+                        val.push_str(&values[i]);
+                        println!("pads :`{val}`");
+                        values[i] = val;
+                    }
                 },
                 Modifier::PadEnd(width, pat) => {
-                    values[i].push_str(&pat.repeat(*width));                                
+                    let width: i32 = (*width as i32) - (values[i].len() as i32);
+                    println!("the final width {width}");
+                    if width > 0 {
+                        values[i].push_str(&pat.repeat(width as usize));                                
+                        println!("pads :`{}`", values[i]);
+                    }
+                    
                 },
             }                    
         }                    
