@@ -1,0 +1,234 @@
+use std::str::FromStr;
+
+use syn::parse::{Parse, ParseStream};
+use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
+
+use crate::models::{Output, Modifier, RenderType, TokenParserState, TokenPart};
+
+const MAX_DEPTH: usize = 20;
+
+fn parse_lit<T>(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<T>
+where T: FromStr, 
+    <T as FromStr>::Err: std::fmt::Display {
+    let result = args
+        .parse::<LitInt>()
+        .and_then(|val| val.base10_parse::<T>());
+    result
+}
+
+fn parse_splice(args: syn::parse::ParseBuffer<'_>, output: Output) -> syn::Result<Modifier> {
+    let mut start = None;
+    let mut end = None;
+    let mut insert = None;
+    if let Ok(_) = args.parse::<Token![,]>() {
+        start = args
+            .parse::<LitInt>()
+            .and_then(|val| val.base10_parse::<i32>())
+            .ok();
+    }
+    if let Ok(_)  = args.parse::<Token![,]>() {
+        end = args
+            .parse::<LitInt>()
+            .and_then(|val| val.base10_parse::<i32>())
+            .ok();
+    }
+    if let Ok(_)  = args.parse::<Token![,]>() {
+
+        let lit: Lit = args.parse()?;
+            
+        match lit {
+            Lit::Char(val) => {
+                insert = Some(val.value().to_string());
+            },
+            Lit::Str(val) => {
+                insert = Some(val.value());
+            }
+            _ =>  return Err(syn::Error::new(
+                lit.span(),
+                format!("Expected a string, char, or integer literal {:?}", lit.span()),
+            ))
+        }
+    }
+    
+    Ok(Modifier::Splice(output, start, end, insert))  
+}
+
+
+fn parse_lit_str_char(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<String> {
+    let result = if args.peek(LitStr) {
+        args.parse::<LitStr>()?.value()
+    } else {
+        args.parse::<LitChar>()?.value().to_string()
+    };
+    Ok(result)
+}
+
+fn parse_pad_args(input: &syn::parse::ParseBuffer<'_>) -> Result<(usize, String), syn::Error> {
+    let args;
+    syn::braced!(args in input);
+    let size = parse_lit(&args)?;
+    args.parse::<Token![,]>()?;
+    let pad = parse_lit_str_char(&args)?;
+    Ok((size, pad))
+}
+
+pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modifier>> {
+    let mut modifiers = Vec::new();
+    
+    while input.peek(Token![|]) {
+        input.parse::<Token![|]>()?;
+        if input.is_empty() {
+            break;
+        }
+
+        let mod_name: Ident = input.parse()?;
+        match mod_name.to_string().to_lowercase().as_str() {
+            "singular" => modifiers.push(Modifier::Singular),
+            "plural" => modifiers.push(Modifier::Plural),
+            "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
+            "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
+            "pascal" | "pascalcase" | "uppercamelcase" => {
+                modifiers.push(Modifier::PascalCase)
+            }
+            "lowercamelcase" | "camelcase" | "camel" => {
+                modifiers.push(Modifier::LowerCamelCase)
+            }
+            "snakecase" | "snake" | "snekcase" | "snek" => {
+                modifiers.push(Modifier::SnakeCase)
+            }
+            "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
+            "shoutysnakecase" | "shoutysnake" | "shoutysnekcase" | "shoutysnek" => {
+                modifiers.push(Modifier::ShoutySnakeCase)
+            }
+            "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
+            "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
+            "traincase" | "train" => modifiers.push(Modifier::TrainCase),
+            "replace" => {
+                let args;
+                syn::braced!(args in input);
+                let from = parse_lit_str_char(&args)?;                
+                args.parse::<Token![,]>()?;
+                let to = parse_lit_str_char(&args)?;
+                modifiers.push(Modifier::Replace(from, to));
+            }
+            "substr" | "substring" => {
+                let args;
+                syn::braced!(args in input);
+                let from = parse_lit(&args).ok();
+                args.parse::<Token![,]>()?;
+                let to = parse_lit(&args).ok();
+
+                modifiers.push(Modifier::Substr(from, to));
+            }
+            "reverse" | "rev" => modifiers.push(Modifier::Reverse),
+            "repeat" | "rep" | "times" => {
+                let args;
+                syn::braced!(args in input); 
+                let times = args
+                    .parse::<LitInt>()
+                    .and_then(|val| val.base10_parse::<usize>())?;
+
+                modifiers.push(Modifier::Repeat(times));
+            },
+            "splitat" => {
+                let args;
+                syn::braced!(args in input);
+                let mid = parse_lit(&args)?;
+                modifiers.push(Modifier::SplitAt(mid));
+                
+            },
+            "split" => {
+                let args;
+                syn::braced!(args in input);
+                
+                let lit: Lit = args.parse()?;
+        
+                match lit {
+                    Lit::Char(sep) => {
+                        modifiers.push(Modifier::Split(sep.value().to_string()));
+                    },
+                    Lit::Str(sep) => {
+                        modifiers.push(Modifier::Split(sep.value()));
+                    }
+                    Lit::Int(num) => {
+                        let mid = num.base10_parse::<usize>()?;
+                        modifiers.push(Modifier::SplitAt(mid));
+                    }
+                    _ =>  return Err(syn::Error::new(
+                        mod_name.span(),
+                        format!("Expected a string, char, or integer literal {:?}", mod_name.span()),
+                    ))
+                }                                                
+            },
+            "join" => {
+                let args;
+                syn::braced!(args in input);
+                let sep = parse_lit_str_char(&args)?;                        
+                modifiers.push(Modifier::Join(sep));
+            },
+            "padstart" | "padleft" | "padl" => {
+                let (size, pad) = parse_pad_args(input)?;
+
+                modifiers.push(Modifier::PadStart(size, pad));
+            },
+            "padend" | "padright" | "padr" => {
+                let (size, pad) = parse_pad_args(input)?;
+
+                modifiers.push(Modifier::PadEnd(size, pad));
+            },
+            "slice" => {
+                let args;
+                syn::braced!(args in input);
+                let start = parse_lit(&args).ok();
+
+                args.parse::<Token![,]>()?;
+
+                let end = parse_lit(&args).ok();
+                modifiers.push(Modifier::Slice(start, end));
+            },
+            "spliceout" => {
+                let args;
+                syn::braced!(args in input);
+                let modifier = parse_splice(args, Output::Removed)?;
+                modifiers.push(modifier);
+            },
+            "spliceinto" => {
+                let args;
+                syn::braced!(args in input);
+                let modifier = parse_splice(args, Output::Value)?;
+                modifiers.push(modifier);
+            },
+            "splice" => {
+                let args;
+                syn::braced!(args in input);
+                let output = match args.parse::<syn::Ident>() {
+                    Err(_) => Output::Value,
+                    Ok(val) => {
+                        match val.to_string().to_lowercase().as_str() {
+                            "in" | "into" | "value" | "val" => Output::Value,
+                            "out" | "rm" | "removed" => Output::Removed,
+                            v => {
+                                return Err(syn::Error::new(
+                                    val.span(), 
+                                    format!("Splice direction invalid \"{v}\"")
+                                ))
+                            }
+                        }
+                    },                    
+                };
+
+                let modifier = parse_splice(args, output)?;
+
+                modifiers.push(modifier);
+            },
+            _ => {
+                return Err(syn::Error::new(
+                    mod_name.span(),
+                    format!("Unknown modifier {:?}", mod_name.span()),
+                ));
+            }
+        }
+    }
+    Ok(modifiers)
+}
+

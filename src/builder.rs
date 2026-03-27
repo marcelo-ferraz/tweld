@@ -1,6 +1,6 @@
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToShoutyKebabCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToTrainCase}; 
 
-use crate::models::{Modifier, TokenPart};
+use crate::models::{Output, Modifier, TokenPart};
 
 pub fn build_string(parts: Vec<TokenPart>) -> String {
     println!("parts: {parts:?}");
@@ -132,8 +132,48 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     }
                     
                 },
+                Modifier::Slice(start, end) => {
+                    let len = values[i].len() as i32;
+
+                    let start = resolve(len, start.unwrap_or(0));
+                    let end = resolve(len, end.unwrap_or(len));
+
+                    if start >= end {
+                        values[i] = String::new();
+                    }
+
+                    values[i] = values[i][start..end].to_string();                          
+                },
+                Modifier::Splice(output, start, delete_end, insert) => {
+                    let len = values[i].len() as i32;
+                    let insert = insert.clone().unwrap_or(String::new());
+
+                    let start = resolve(len, start.unwrap_or(0));
+                    let end = resolve(len, delete_end.unwrap_or(len));
+
+                    if start > end {
+                        return String::new();
+                    }
+
+                    let removed = values[i][start..end].to_string();
+                    
+                    values[i].replace_range(start..end, &insert );
+
+                    if let Output::Removed = output {
+                        values[i] = removed;
+                    }                    
+                }
             }                    
         }                    
     }
     values.join("")
 }
+
+fn resolve(len: i32, val: i32) -> usize {
+    if val < 0 {
+        (len + val).max(0) as usize
+    } else {
+        val.min(len) as usize
+    }
+}
+

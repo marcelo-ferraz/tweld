@@ -1,7 +1,10 @@
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
+mod modifiers;
 
-use crate::models::{Modifier, RenderType, TokenParserState, TokenPart};
+use syn::parse::{Parse, ParseStream};
+use syn::{Ident, LitChar, LitStr, Token, parenthesized};
+
+use crate::models::{RenderType, TokenParserState, TokenPart};
+use crate::parser::modifiers::parse_modifiers;
 
 const MAX_DEPTH: usize = 20;
 
@@ -10,167 +13,25 @@ pub struct TweldDsl {
     pub parts: Vec<TokenPart>,
 }
 
-fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Result<Vec<Modifier>> {
-    let mut modifiers = Vec::new();
-    
-    while input.peek(Token![|]) {
-        input.parse::<Token![|]>()?;
-        if input.is_empty() {
-            break;
-        }
-
-        let mod_name: Ident = input.parse()?;
-        match mod_name.to_string().to_lowercase().as_str() {
-            "singular" => modifiers.push(Modifier::Singular),
-            "plural" => modifiers.push(Modifier::Plural),
-            "lower" | "lowercase" => modifiers.push(Modifier::Lowercase),
-            "upper" | "uppercase" => modifiers.push(Modifier::Uppercase),
-            "pascal" | "pascalcase" | "uppercamelcase" => {
-                modifiers.push(Modifier::PascalCase)
-            }
-            "lowercamelcase" | "camelcase" | "camel" => {
-                modifiers.push(Modifier::LowerCamelCase)
-            }
-            "snakecase" | "snake" | "snekcase" | "snek" => {
-                modifiers.push(Modifier::SnakeCase)
-            }
-            "kebabcase" | "kebab" => modifiers.push(Modifier::KebabCase),
-            "shoutysnakecase" | "shoutysnake" | "shoutysnekcase" | "shoutysnek" => {
-                modifiers.push(Modifier::ShoutySnakeCase)
-            }
-            "titlecase" | "title" => modifiers.push(Modifier::TitleCase),
-            "shoutykebabcase" | "shoutykebab" => modifiers.push(Modifier::ShoutyKebabCase),
-            "traincase" | "train" => modifiers.push(Modifier::TrainCase),
-            "replace" => {
-                let args;
-                syn::braced!(args in input);
-                let from = parse_lit_str_char(&args)?;                
-                args.parse::<Token![,]>()?;
-                let to = parse_lit_str_char(&args)?;
-                modifiers.push(Modifier::Replace(from, to));
-            }
-            "substr" | "substring" => {
-                let args;
-                syn::braced!(args in input);
-                let from = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())
-                    .ok();
-
-                args.parse::<Token![,]>()?;
-
-                let to = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())
-                    .ok();
-
-                modifiers.push(Modifier::Substr(from, to));
-            }
-            "reverse" | "rev" => modifiers.push(Modifier::Reverse),
-            "repeat" | "rep" | "times" => {
-                let args;
-                syn::braced!(args in input); 
-                let times = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())?;
-
-                modifiers.push(Modifier::Repeat(times));
-            },
-            "split" => {
-                let args;
-                syn::braced!(args in input);
-                
-                let lit: Lit = args.parse()?;
+impl Parse for TweldDsl {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut dsl = TweldDsl { 
+            render_type: RenderType::Identifier, 
+            parts: Vec::new(),
+        };
         
-                match lit {
-                    Lit::Char(sep) => {
-                        modifiers.push(Modifier::Split(sep.value().to_string()));
-                    },
-                    Lit::Str(sep) => {
-                        modifiers.push(Modifier::Split(sep.value()));
-                    }
-                    Lit::Int(num) => {
-                        let mid = num.base10_parse::<usize>()?;
-                        modifiers.push(Modifier::SplitAt(mid));
-                    }
-                    _ =>  return Err(syn::Error::new(
-                        mod_name.span(),
-                        format!("Expected a string, char, or integer literal {:?}", mod_name.span()),
-                    ))
-                }                                                
-            },
-            "join" => {
-                let args;
-                syn::braced!(args in input);
-                let sep = parse_lit_str_char(&args)?;                        
-                modifiers.push(Modifier::Join(sep));
-            },
-            "padstart" | "padleft" | "padl" => {
-                let (size, pad) = parse_pad_args(input)?;
+        dsl = parse_stream(
+            input, 
+            dsl, 
+            TokenParserState::InsideBrackets,
+            0usize
+        )?;
 
-                modifiers.push(Modifier::PadStart(size, pad));
-            },
-            "padend" | "padright" | "padr" => {
-                let (size, pad) = parse_pad_args(input)?;
-
-                modifiers.push(Modifier::PadEnd(size, pad));
-            },            
-            _ => {
-                return Err(syn::Error::new(
-                    mod_name.span(),
-                    format!("Unknown modifier {:?}", mod_name.span()),
-                ));
-            }
-        }
+        println!("parts: {:?}", dsl.parts);
+        Ok(dsl)
     }
-    Ok(modifiers)
 }
 
-fn parse_lit_str_char(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<String> {
-    let sep = if args.peek(LitStr) {
-        args.parse::<LitStr>()?.value()
-    } else {
-        args.parse::<LitChar>()?.value().to_string()
-    };
-    Ok(sep)
-}
-
-fn parse_pad_args(input: &syn::parse::ParseBuffer<'_>) -> Result<(usize, String), syn::Error> {
-    let args;
-    syn::braced!(args in input);
-    let size = args
-        .parse::<LitInt>()
-        .and_then(|val| val.base10_parse::<usize>())?;
-    args.parse::<Token![,]>()?;
-    let pad = if args.peek(LitStr) {
-        args.parse::<LitStr>()?.value()
-    } else {
-        args.parse::<LitChar>()?.value().to_string()
-    };
-    Ok((size, pad))
-}
-
-fn parse_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
-    let group;
-    parenthesized!(group in input);
-    let mut grouped_dsl = TweldDsl {
-        render_type: dsl.render_type.clone(),
-        parts: vec![],
-    };
-    grouped_dsl = parse_stream(
-        &group, grouped_dsl, 
-        TokenParserState::InsideGroup, 
-        depth
-    )?;
-
-    dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
-    
-    if let RenderType::StringLiteral = grouped_dsl.render_type {
-        dsl.render_type = RenderType::StringLiteral;
-    }
-
-    Ok(())
-}
 
 fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>, 
@@ -375,21 +236,24 @@ fn parse_stream(
     Ok(dsl)
 }
 
-impl Parse for TweldDsl {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut dsl = TweldDsl { 
-            render_type: RenderType::Identifier, 
-            parts: Vec::new(),
-        };
-        
-        dsl = parse_stream(
-            input, 
-            dsl, 
-            TokenParserState::InsideBrackets,
-            0usize
-        )?;
+fn parse_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
+    let group;
+    parenthesized!(group in input);
+    let mut grouped_dsl = TweldDsl {
+        render_type: dsl.render_type.clone(),
+        parts: vec![],
+    };
+    grouped_dsl = parse_stream(
+        &group, grouped_dsl, 
+        TokenParserState::InsideGroup, 
+        depth
+    )?;
 
-        println!("parts: {:?}", dsl.parts);
-        Ok(dsl)
+    dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
+    
+    if let RenderType::StringLiteral = grouped_dsl.render_type {
+        dsl.render_type = RenderType::StringLiteral;
     }
+
+    Ok(())
 }
