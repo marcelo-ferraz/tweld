@@ -454,6 +454,304 @@ mod tests {
     }
 
     #[test]
+    fn should_apply_slice() {
+        let arguments = vec![
+            (
+                quote! { @[get_ Test_Struct | slice{-4}] },
+                "get_ruct",
+            ),  
+            (
+                quote! { @[(get_ Test_Struct) | slice{-4}] },
+                "ruct",
+            ),  
+            (
+                quote! { @[get_ Test_Struct | slice{5}] },
+                "get_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| slice{,8}] },                 
+                "get_Test",
+            ),       
+            (
+                quote! { @[(_get_ Test_Struct) | slice{1, -4}] },
+                "get_Test_St",
+            ),            
+            (
+                quote! { @[(_get_ Test_Struct) | slice{-6, -4}] },
+                "St",
+            ),      
+                        
+            (
+                quote! { @[get_ Test_Struct| slice{-4,-6}] },
+                "get_",
+            ),       
+        ];
+
+        assert_transformations(arguments);
+    }
+
+
+    #[test]
+    fn should_apply_splice_into() {
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, 1}] },
+                "g",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{value, 1}] },
+                "g",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val, 1}] },
+                "g",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, 1, 4}] },
+                "gTest_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{value, 1, 4}] },
+                "gTest_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val, 1, 4}] },
+                "gTest_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{value, 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val,, 4, "got_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{into,, 4, "got_"}] },
+                "got_Test_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{value,, 4, "got_"}] },
+                "got_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val,, 4, "got_"}] },
+                "got_Test_Struct",
+            ),
+            
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, 1,, "ot_"}] },
+                "got_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{value, 1,, "ot_"}] },
+                "got_",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val, 1,, "ot_"}] },
+                "got_",
+            ),
+
+            (
+                quote! { @[(get_ Test_Struct)| splice{into,,, "new"}] },
+                "new",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{value,,, "new"}] },
+                "new",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{val,,, "new"}] },
+                "new",
+            ),
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_splice_out() {
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, 1}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed, 1}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{rm, 1}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, 1, 4}] },
+                "et_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed, 1, 4}] },
+                "et_",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{rm, 1, 4}] },
+                "et_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, 1, 4, "ot_"}] },
+                "et_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed, 1, 4, "ot_"}] },
+                "et_",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{out,, 4, "got_"}] },
+                "get_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed,, 4, "got_"}] },
+                "get_",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{rm,, 4, "got_"}] },
+                "get_",
+            ),
+            
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, 1,, "ot_"}] },
+                "et_Test_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed, 1,, "ot_"}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{rm, 1,, "ot_"}] },
+                "et_Test_Struct",
+            ),
+
+            (
+                quote! { @[(get_ Test_Struct)| splice{out,,, "new"}] },
+                "get_Test_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice{removed,,, "new"}] },
+                "get_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{rm,,, "new"}] },
+                "get_Test_Struct",
+            ),
+            
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout {1}] },
+            //     "et_Test_Struct",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1}] },
+            //     "et_Test_Struct",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1}] },
+            //     "et_Test_Struct",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
+            //     "et_",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
+            //     "et_",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
+            //     "et_",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4, "ot_"}] },
+            //     "et_",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4, "ot_"}] },
+            //     "et_",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
+            //     "get_",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
+            //     "get_",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
+            //     "get_",
+            // ),
+            
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
+            //     "et_Test_Struct",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
+            //     "et_Test_Struct",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
+            //     "et_Test_Struct",
+            // ),
+
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
+            //     "get_Test_Struct",
+            // ),        
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
+            //     "get_Test_Struct",
+            // ), 
+            // (
+            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
+            //     "get_Test_Struct",
+            // ),
+        ];
+
+        assert_transformations(arguments);
+    }
+     
+
+    #[test]
+    fn should_apply_splice_no_output() {            
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct)| splice{,,, "new"}] },
+                "new",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1,, "ot_"}] },
+                "got_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{,, 4, "got_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1, 4}] },
+                "gTest_Struct",
+            ), 
+        ];
+
+        assert_transformations(arguments);
+    }
+
+    #[test]
     fn should_ignore_invalid_ident_chars() {
         let arguments = vec![
             (

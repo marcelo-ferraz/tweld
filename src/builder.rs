@@ -140,6 +140,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
 
                     if start >= end {
                         values[i] = String::new();
+                        continue;
                     }
 
                     values[i] = values[i][start..end].to_string();                          
@@ -152,7 +153,8 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     let end = resolve(len, delete_end.unwrap_or(len));
 
                     if start > end {
-                        return String::new();
+                        values[i] = String::new();
+                        continue;
                     }
 
                     let removed = values[i][start..end].to_string();
@@ -169,6 +171,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
     values.join("")
 }
 
+// couldnt think of a name...
 fn resolve(len: i32, val: i32) -> usize {
     if val < 0 {
         (len + val).max(0) as usize

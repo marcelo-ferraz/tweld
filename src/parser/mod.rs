@@ -27,7 +27,7 @@ impl Parse for TweldDsl {
             0usize
         )?;
 
-        println!("parts: {:?}", dsl.parts);
+        println!("parts2: {:?}", dsl.parts);
         Ok(dsl)
     }
 }
@@ -39,15 +39,15 @@ fn parse_stream(
     state: TokenParserState,     
     mut depth: usize,
 ) -> syn::Result<TweldDsl> {
-
     if depth >= MAX_DEPTH {
         return Err(syn::Error::new(
             input.span(), "Maximum nesting reached!"
         ));
     }
-
+    
     depth += 1; 
-    let sp = "-".repeat(depth);
+    let sp = format!{"{depth}{}", "-".repeat(depth)};
+    println!("{sp}parsing");
     let mut words: Vec<String> = vec![];    
     while !input.is_empty() {
         println!("{sp}looping: {state:?} {:?}", dsl.parts);

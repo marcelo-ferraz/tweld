@@ -27,7 +27,7 @@ pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
                         };
                                                 
                         let dsl: TweldDsl = parse2(bracket_group.stream())?;                        
-                        println!("render {:?}", dsl.render_type);
+                        println!("rendersssss {:?}", dsl.render_type);
                         
                         let result = build_string(dsl.parts);
 

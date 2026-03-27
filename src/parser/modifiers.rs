@@ -1,11 +1,8 @@
 use std::str::FromStr;
 
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token, parenthesized};
+use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token};
 
-use crate::models::{Output, Modifier, RenderType, TokenParserState, TokenPart};
-
-const MAX_DEPTH: usize = 20;
+use crate::models::{Output, Modifier};
 
 fn parse_lit<T>(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<T>
 where T: FromStr, 
@@ -20,35 +17,33 @@ fn parse_splice(args: syn::parse::ParseBuffer<'_>, output: Output) -> syn::Resul
     let mut start = None;
     let mut end = None;
     let mut insert = None;
-    if let Ok(_) = args.parse::<Token![,]>() {
-        start = args
-            .parse::<LitInt>()
-            .and_then(|val| val.base10_parse::<i32>())
-            .ok();
+    
+    if !args.peek(Token![,]) { 
+        return Ok(Modifier::Splice(output, start, end, insert));
     }
-    if let Ok(_)  = args.parse::<Token![,]>() {
-        end = args
-            .parse::<LitInt>()
-            .and_then(|val| val.base10_parse::<i32>())
-            .ok();
-    }
-    if let Ok(_)  = args.parse::<Token![,]>() {
+    
+    args.parse::<Token![,]>()?;
+    start = args
+        .parse::<LitInt>()
+        .and_then(|val| val.base10_parse::<i32>())
+        .ok();
 
-        let lit: Lit = args.parse()?;
-            
-        match lit {
-            Lit::Char(val) => {
-                insert = Some(val.value().to_string());
-            },
-            Lit::Str(val) => {
-                insert = Some(val.value());
-            }
-            _ =>  return Err(syn::Error::new(
-                lit.span(),
-                format!("Expected a string, char, or integer literal {:?}", lit.span()),
-            ))
-        }
+    if !args.peek(Token![,]) { 
+        return Ok(Modifier::Splice(output, start, end, insert));
     }
+    
+    args.parse::<Token![,]>()?;
+    end = args
+        .parse::<LitInt>()
+        .and_then(|val| val.base10_parse::<i32>())
+        .ok();
+    
+    if !args.peek(Token![,]) { 
+        return Ok(Modifier::Splice(output, start, end, insert));
+    }
+
+    args.parse::<Token![,]>()?;
+    insert = parse_lit_str_char(&args).ok();     
     
     Ok(Modifier::Splice(output, start, end, insert))  
 }
@@ -181,18 +176,21 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 syn::braced!(args in input);
                 let start = parse_lit(&args).ok();
 
-                args.parse::<Token![,]>()?;
+                let mut end = None;
+                if let Ok(_) = args.parse::<Token![,]>() {
+                    end = parse_lit(&args).ok();
+                }
 
-                let end = parse_lit(&args).ok();
                 modifiers.push(Modifier::Slice(start, end));
             },
-            "spliceout" => {
+            "spliceout" | "splice_out" => {
                 let args;
                 syn::braced!(args in input);
                 let modifier = parse_splice(args, Output::Removed)?;
                 modifiers.push(modifier);
+                println!("spliceout");
             },
-            "spliceinto" => {
+            "spliceinto" | "splice_into" => {
                 let args;
                 syn::braced!(args in input);
                 let modifier = parse_splice(args, Output::Value)?;
@@ -201,16 +199,17 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
             "splice" => {
                 let args;
                 syn::braced!(args in input);
+                println!("splice");
                 let output = match args.parse::<syn::Ident>() {
                     Err(_) => Output::Value,
                     Ok(val) => {
                         match val.to_string().to_lowercase().as_str() {
-                            "in" | "into" | "value" | "val" => Output::Value,
+                            "into" | "value" | "val" => Output::Value,
                             "out" | "rm" | "removed" => Output::Removed,
                             v => {
                                 return Err(syn::Error::new(
                                     val.span(), 
-                                    format!("Splice direction invalid \"{v}\"")
+                                    format!("Splice output invalid \"{v}\"")
                                 ))
                             }
                         }
