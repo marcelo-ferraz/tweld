@@ -117,7 +117,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     let width: i32 = (*width as i32) - (values[i].len() as i32);
                     println!("the final width {width}");
                     if width > 0 {
-                        let mut val = pat.repeat(width as usize);
+                        let mut val = pat.repeat(width as usize)[0..(width as usize)].to_string();
                         val.push_str(&values[i]);
                         println!("pads :`{val}`");
                         values[i] = val;
@@ -127,7 +127,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     let width: i32 = (*width as i32) - (values[i].len() as i32);
                     println!("the final width {width}");
                     if width > 0 {
-                        values[i].push_str(&pat.repeat(width as usize));                                
+                        values[i].push_str(&pat.repeat(width as usize)[0..(width as usize)]);                                
                         println!("pads :`{}`", values[i]);
                     }
                     

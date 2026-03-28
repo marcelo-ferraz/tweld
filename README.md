@@ -89,12 +89,41 @@ weld!(const @[a long ident | replace{"long","small"}|snek] = "";);
 This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied. Both indexes are optional.
 ```rust
 // will render const a_long_ident = "";
-weld!(const @[a long identifier | substr{,9}|snek] = "";);
+weld!(const @[(a long identifier)| substr{,9}|snek] = "";);
 ```  
 ---
-`reverse`, `rev`
-`repeat`, `rep`, `times`
-`split`
-`join`
-`padstart`, `padleft`, `padl`
-`padend`, `padright`, `padr`
+#### `reverse`, `rev`
+Reverses the identifier, or literal.
+```rust
+// will render const tnedi_gnol_a = "";
+weld!(const @[(a long identifier)| reverse] = "";);
+
+// will render const nolem_on_nomel_on = "";
+weld!(const @[(no lemon no melon)| reverse|snek] = "";);
+```  
+---
+#### `repeat`, `rep`, `times`
+Creates a new value by repeating it `n` times.
+```rust
+// will render const rawhide = "rolling' ,rolling' ,rolling' ";
+weld!(const rawhide = @[",rolling' "| times | substr{1}];);
+```  
+---
+#### `split`
+---
+#### `join`
+---
+#### `padstart`, `padleft`, `padl`
+Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the start of this string.
+---
+#### `padend`, `padright`, `padr`
+Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the end of this string.
+---
+#### `slice`
+Extracts a substring from a string using start and end positions. Both parameters are optional and support negative indexing, where negative values count backwards from the end of the string. When no arguments are provided, returns the full string.---
+#### `splice`
+Modifies a string in place by removing a portion defined by start and end positions, optionally replacing it with new content. Returns either the removed portion or the modified string depending on the variant used. Both positions are optional and support negative indexing, where negative values count backwards from the end of the string.
+---
+#### `spliceout`, `splice_out`
+---
+#### `spliceinto`, `splice_into`
