@@ -568,6 +568,56 @@ mod tests {
                 quote! { @[(get_ Test_Struct)| splice{val,,, "new"}] },
                 "new",
             ),
+            // alias spliceinto
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{ 1}] },
+                "g",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{ 1, 4}] },
+                "gTest_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{ 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{, 4, "got_"}] },
+                "got_Test_Struct",
+            ),            
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{ 1,, "ot_"}] },
+                "got_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| spliceinto{,, "new"}] },
+                "new",
+            ),
+            // alias splice_into
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{ 1}] },
+                "g",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{ 1, 4}] },
+                "gTest_Struct",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{ 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{, 4, "got_"}] },
+                "got_Test_Struct",
+            ),            
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{ 1,, "ot_"}] },
+                "got_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice_into{,, "new"}] },
+                "new",
+            ),
         ];
 
         assert_transformations(arguments);
@@ -646,77 +696,56 @@ mod tests {
                 quote! { @[(get_ Test_Struct)| splice{rm,,, "new"}] },
                 "get_Test_Struct",
             ),
-            
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout {1}] },
-            //     "et_Test_Struct",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1}] },
-            //     "et_Test_Struct",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1}] },
-            //     "et_Test_Struct",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
-            //     "et_",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
-            //     "et_",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
-            //     "et_",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4, "ot_"}] },
-            //     "et_",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1, 4, "ot_"}] },
-            //     "et_",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
-            //     "get_",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
-            //     "get_",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
-            //     "get_",
-            // ),
-            
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
-            //     "et_Test_Struct",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
-            //     "et_Test_Struct",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
-            //     "et_Test_Struct",
-            // ),
-
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
-            //     "get_Test_Struct",
-            // ),        
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
-            //     "get_Test_Struct",
-            // ), 
-            // (
-            //     quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
-            //     "get_Test_Struct",
-            // ),
+            // alias spliceout
+            (
+                quote! { @[(get_ Test_Struct)| spliceout {1, } ] },
+                "et_Test_Struct",
+            ),             
+            (
+                quote! { @[(get_ Test_Struct)| spliceout{ 1, 4}] },
+                "et_",
+            ),                
+            (
+                quote! { @[(get_ Test_Struct)| spliceout{ 1, 4, "ot_"}] },
+                "et_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| spliceout{, 4, "got_"}] },
+                "get_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| spliceout{ 1,, "ot_"}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| spliceout{,, "new"}] },
+                "get_Test_Struct",
+            ),        
+            // alias splice_out
+            (
+                quote! { @[(get_ Test_Struct)| splice_out {1, } ] },
+                "et_Test_Struct",
+            ),             
+            (
+                quote! { @[(get_ Test_Struct)| splice_out{ 1, 4}] },
+                "et_",
+            ),                
+            (
+                quote! { @[(get_ Test_Struct)| splice_out{ 1, 4, "ot_"}] },
+                "et_",
+            ),        
+            (
+                quote! { @[(get_ Test_Struct)| splice_out{, 4, "got_"}] },
+                "get_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice_out{ 1,, "ot_"}] },
+                "et_Test_Struct",
+            ), 
+            (
+                quote! { @[(get_ Test_Struct)| splice_out{,, "new"}] },
+                "get_Test_Struct",
+            ),  
         ];
 
         assert_transformations(arguments);
@@ -775,7 +804,6 @@ mod tests {
 
         assert_transformations(arguments);
     }
-
 
     #[test]
     fn should_chain_piped_modifiers() {

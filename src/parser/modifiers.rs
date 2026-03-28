@@ -13,23 +13,50 @@ where T: FromStr,
     result
 }
 
-fn parse_splice(args: syn::parse::ParseBuffer<'_>, output: Output) -> syn::Result<Modifier> {
+fn parse_splice(input: &syn::parse::ParseBuffer<'_>, output_set: Option<Output>) -> syn::Result<Modifier> {
     let mut start = None;
     let mut end = None;
     let mut insert = None;
+
+    let args;
+    syn::braced!(args in input);
+    println!("splice");
     
-    if !args.peek(Token![,]) { 
-        return Ok(Modifier::Splice(output, start, end, insert));
+    let output_type;
+    
+    match output_set {
+        Some(val) => output_type = val,
+        None => {
+            match args.parse::<syn::Ident>() {
+                Err(_) => output_type = Output::Value,
+                Ok(val) => {
+                    match val.to_string().to_lowercase().as_str() {
+                        "into" | "value" | "val" => output_type = Output::Value,
+                        "out" | "rm" | "removed" => output_type = Output::Removed,
+                        v => {
+                            return Err(syn::Error::new(
+                                val.span(), 
+                                format!("Splice output invalid \"{v}\"")
+                            ))
+                        }
+                    }
+                },                    
+            };
+            
+            if !args.peek(Token![,]) { 
+                return Ok(Modifier::Splice(output_type, start, end, insert));
+            }
+            args.parse::<Token![,]>()?;
+        },        
     }
-    
-    args.parse::<Token![,]>()?;
+       
     start = args
         .parse::<LitInt>()
         .and_then(|val| val.base10_parse::<i32>())
         .ok();
 
     if !args.peek(Token![,]) { 
-        return Ok(Modifier::Splice(output, start, end, insert));
+        return Ok(Modifier::Splice(output_type, start, end, insert));
     }
     
     args.parse::<Token![,]>()?;
@@ -39,13 +66,13 @@ fn parse_splice(args: syn::parse::ParseBuffer<'_>, output: Output) -> syn::Resul
         .ok();
     
     if !args.peek(Token![,]) { 
-        return Ok(Modifier::Splice(output, start, end, insert));
+        return Ok(Modifier::Splice(output_type, start, end, insert));
     }
 
     args.parse::<Token![,]>()?;
     insert = parse_lit_str_char(&args).ok();     
     
-    Ok(Modifier::Splice(output, start, end, insert))  
+    Ok(Modifier::Splice(output_type, start, end, insert))  
 }
 
 
@@ -184,40 +211,17 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 modifiers.push(Modifier::Slice(start, end));
             },
             "spliceout" | "splice_out" => {
-                let args;
-                syn::braced!(args in input);
-                let modifier = parse_splice(args, Output::Removed)?;
+                let modifier = parse_splice(input, Some(Output::Removed))?;
                 modifiers.push(modifier);
                 println!("spliceout");
             },
             "spliceinto" | "splice_into" => {
-                let args;
-                syn::braced!(args in input);
-                let modifier = parse_splice(args, Output::Value)?;
+                let modifier = parse_splice(input, Some(Output::Value))?;
                 modifiers.push(modifier);
+                println!("splicein");
             },
             "splice" => {
-                let args;
-                syn::braced!(args in input);
-                println!("splice");
-                let output = match args.parse::<syn::Ident>() {
-                    Err(_) => Output::Value,
-                    Ok(val) => {
-                        match val.to_string().to_lowercase().as_str() {
-                            "into" | "value" | "val" => Output::Value,
-                            "out" | "rm" | "removed" => Output::Removed,
-                            v => {
-                                return Err(syn::Error::new(
-                                    val.span(), 
-                                    format!("Splice output invalid \"{v}\"")
-                                ))
-                            }
-                        }
-                    },                    
-                };
-
-                let modifier = parse_splice(args, output)?;
-
+                let modifier = parse_splice(input, None)?;                
                 modifiers.push(modifier);
             },
             _ => {
