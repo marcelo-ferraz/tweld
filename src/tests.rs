@@ -329,11 +329,20 @@ mod tests {
                 quote! { @[(get Test Struct) | snek | split{"_"} | reverse | join{"_"}| pascal ] },
                 "StructTestGet",
             ), 
-            
+            (
+                /*
+                 * 1 - group [get Test Struct] -> [get, Test, Struct]
+                 * 2 - reverse ->  [Struct, Test, get,]
+                 * 3 - join with {"_"} ->  Struct_Test_get
+                 * 4 - to pascal  -> StructTestGet
+                 */
+                quote! { @[[get Test Struct] | reverse | join{"_"}| pascal ] },
+                "StructTestGet",
+            ), 
             (
                 /*
                  * 1 - group (get - Test - Struct) -> getTestStruct
-                 * 1 - split by "-" ->  [get, Test, Struct]
+                 * 2 - split by "-" ->  [get, Test, Struct]
                  * 3 - slice 1 to 3 ->  [Test, Struct]                
                  */
                 quote! { @[(get - Test - Struct) | split{"-"} | slice{1,3} ] },
@@ -343,12 +352,20 @@ mod tests {
             (
                 /*
                  * 1 - group (get - Test - Struct) -> getTestStruct
-                 * 1 - split by "-" ->  [get, Test, Struct]
+                 * 2 - split by "-" ->  [get, Test, Struct]
                  * 3 - slice 1 to 3 ->  [Test, Struct]                
                  */
                 quote! { @[(get - Test - Struct) | split{"-"} | splice{,1,2, "New"} ] },
                 "getNewStruct",
             ),      
+            (
+                /*
+                 * 1 - group [get Test Struct] -> [get, Test, Struct]                 
+                 * 2 - slice 1 to 3 ->  [Test, Struct]                
+                 */
+                quote! { @[[get Test Struct] | splice{,1,2, "New"} ] },
+                "getNewStruct",
+            ),  
         ];
 
         assert_transformations(arguments);

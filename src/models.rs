@@ -34,14 +34,15 @@ pub enum Output {
 #[derive(Debug, Clone)]
 pub enum TokenPart {
     Plain(String),
-    Grouped(Vec<TokenPart>),  
+    ConcatGroup(Vec<TokenPart>),  
+    ListGroup(Vec<TokenPart>),  
     Modified(Box<TokenPart>, Vec<Modifier>),
 }
 
 #[derive(Debug)]
 pub enum TokenParserState {    
     InsideBrackets,
-    InsideGroup,
+    InsideGroup(bool),
     Modifiers
 }
 

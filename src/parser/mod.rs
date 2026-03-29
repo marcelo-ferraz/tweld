@@ -1,7 +1,7 @@
 mod modifiers;
 
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitChar, LitStr, Token, parenthesized};
+use syn::{Ident, LitChar, LitStr, Token, bracketed, parenthesized};
 
 use crate::models::{RenderType, TokenParserState, TokenPart};
 use crate::parser::modifiers::parse_modifiers;
@@ -56,9 +56,18 @@ fn parse_stream(
                 if input.peek(syn::token::Paren) { 
                     println!("{sp}entering group");
 
-                    parse_group(input, &mut dsl, depth)?;
+                    parse_concat_group(input, &mut dsl, depth)?;
 
                     println!("{sp}leaving group b");
+                    continue;
+                }
+
+                if input.peek(syn::token::Bracket) { 
+                    println!("{sp}entering list group b");
+
+                    parse_list_group(input, &mut dsl, depth)?;
+
+                    println!("{sp}leaving list group b");
                     continue;
                 }
 
@@ -120,16 +129,25 @@ fn parse_stream(
                 let ignored = input.parse::<proc_macro2::TokenTree>()?;
                 println!("{sp}ignored 1 {ignored:?}");
             },
-            TokenParserState::InsideGroup => {                    
+            TokenParserState::InsideGroup(_) => {                    
                 while !input.is_empty() {
                     println!("{sp}looping group");
 
                     if input.peek(syn::token::Paren) { 
-                        println!("{sp}entering group");
+                        println!("{sp}entering group g");
                         
-                        parse_group(input, &mut dsl, depth)?;
+                        parse_concat_group(input, &mut dsl, depth)?;
 
                         println!("{sp}leaving group g {:?}", dsl.parts);
+                        continue;
+                    }
+
+                    if input.peek(syn::token::Bracket) { 
+                        println!("{sp}entering list group g");
+
+                        parse_list_group(input, &mut dsl, depth)?;
+
+                        println!("{sp}leaving list group g");
                         continue;
                     }
 
@@ -152,7 +170,7 @@ fn parse_stream(
                     }
 
                     if input.peek(Token![-]) {
-                        input.parse::<Token![-]>()?;
+                        input.parse::<Token![-]>()?;                        
                         words.push("-".to_string());
                         println!("{sp}found token g -: {words:?}");
                         continue;
@@ -220,23 +238,41 @@ fn parse_stream(
 
         if !words.is_empty() {
             println!("{sp}inside loop push plain");
-            dsl.parts.push(TokenPart::Plain(words.join("")));
+            
+            match state {
+                TokenParserState::InsideGroup(concat ) if !concat => {
+                    words.iter().for_each(
+                        |word| dsl.parts.push(TokenPart::Plain(word.clone()))
+                    );                    
+                },
+                _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
+            }
+
             words.clear();
         }
     }
     println!("{sp}end2 - word: `{words:?}`");
 
-    if !words.is_empty() {
-        println!("{sp}outside loop push plain");
-        dsl.parts.push(TokenPart::Plain(words.join("")));
-        words.clear();
-    }
+            if !words.is_empty() {
+            println!("{sp}outside loop push plain");
+            
+            match state {
+                TokenParserState::InsideGroup(bool) => {
+                    words.iter().for_each(
+                        |word| dsl.parts.push(TokenPart::Plain(word.clone()))
+                    );                    
+                },
+                _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
+            }
+
+            words.clear();
+        }
     println!("{sp}render_as: {:?}", dsl.render_type);
 
     Ok(dsl)
 }
 
-fn parse_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
+fn parse_concat_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
     let group;
     parenthesized!(group in input);
     let mut grouped_dsl = TweldDsl {
@@ -245,11 +281,33 @@ fn parse_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: u
     };
     grouped_dsl = parse_stream(
         &group, grouped_dsl, 
-        TokenParserState::InsideGroup, 
+        TokenParserState::InsideGroup(true), 
         depth
     )?;
 
-    dsl.parts.push(TokenPart::Grouped(grouped_dsl.parts));
+    dsl.parts.push(TokenPart::ConcatGroup(grouped_dsl.parts));
+    
+    if let RenderType::StringLiteral = grouped_dsl.render_type {
+        dsl.render_type = RenderType::StringLiteral;
+    }
+
+    Ok(())
+}
+
+fn parse_list_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
+    let group;
+    bracketed!(group in input);
+    let mut grouped_dsl = TweldDsl {
+        render_type: dsl.render_type.clone(),
+        parts: vec![],
+    };
+    grouped_dsl = parse_stream(
+        &group, grouped_dsl, 
+        TokenParserState::InsideGroup(false), 
+        depth
+    )?;
+
+    dsl.parts.push(TokenPart::ListGroup(grouped_dsl.parts));
     
     if let RenderType::StringLiteral = grouped_dsl.render_type {
         dsl.render_type = RenderType::StringLiteral;

@@ -16,7 +16,14 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
 fn build_from_part(part: TokenPart) -> String {
     match part {
         TokenPart::Plain(value) => return value.clone(),
-        TokenPart::Grouped(grouped_parts) => {
+        TokenPart::ConcatGroup(grouped_parts) => {
+            let word = grouped_parts
+                .iter()
+                .map(|sub_part| build_from_part(sub_part.clone()))
+                .collect::<String>();
+            word
+        },
+        TokenPart::ListGroup(grouped_parts) => {
             let word = grouped_parts
                 .iter()
                 .map(|sub_part| build_from_part(sub_part.clone()))
@@ -25,25 +32,35 @@ fn build_from_part(part: TokenPart) -> String {
         },
         TokenPart::Modified(target, modifiers) => {            
             match *target {
-                TokenPart::Plain(value) => modify(value, &modifiers),
-                TokenPart::Grouped(grouped_parts) => {
-                let value = grouped_parts
-                    .iter()
-                    .map(|sub_part| build_from_part(sub_part.clone()))
-                    .collect::<String>();
-                println!("grouped result: {value}");
-                
-                modify(value, &modifiers)
-            },
+                TokenPart::Plain(value) => modify_single(value, &modifiers),
+                TokenPart::ListGroup(items) => {
+                    let value = items
+                        .iter()
+                        .map(|sub_part| build_from_part(sub_part.clone()))
+                        .collect::<Vec<String>>();
+                    
+                    println!("grouped result: {value:?}");
+                    
+                    modify_list(value, &modifiers)
+                },
+                TokenPart::ConcatGroup(grouped_parts) => {
+                    let value = grouped_parts
+                        .iter()
+                        .map(|sub_part| build_from_part(sub_part.clone()))
+                        .collect::<String>();
+                    println!("grouped result: {value}");
+                    
+                    modify_single(value, &modifiers)
+                },
                 TokenPart::Modified(token_part, nested_modifiers) => {
                     println!("token_part: {token_part:?}");
-                    let nested_result = modify(
+                    let nested_result = modify_single(
                         build_from_part(*token_part), 
                         &nested_modifiers
                     );
                     println!("nested_result: `{nested_result}`");
 
-                    let rr= modify(nested_result, &modifiers);
+                    let rr= modify_single(nested_result, &modifiers);
                     println!("result: {rr}");
 
                     rr                    
@@ -53,10 +70,13 @@ fn build_from_part(part: TokenPart) -> String {
     }
 }
 
-fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
-    let mut values = vec![value.to_string()];
-                    
-    println!("modified value `{values:?}`");
+fn modify_single(value: String, modifiers: &Vec<Modifier>) -> String {
+    let values = vec![value.to_string()];
+
+    modify_list(values, modifiers)
+}
+fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
+    println!("modified values `{values:?}`");
                     
     for modified in modifiers {
         let array_mode = values.len() > 1;
