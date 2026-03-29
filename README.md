@@ -23,8 +23,19 @@ weld!(
 );
 ```
 
+### List `[]` and single value `()` groups
 Inside the the brackets, you can organize it in groups, and apply specific modifiers to that group.
 
+#### List Group
+When creating a group using `[]` and applying mods to it, each modification will be handled as in a collection, instead of a single concatenated value. 
+```rust
+
+weld!(
+    // this will render const super_duper = "";
+	const @[([er sup] | reverse ) _duper] = ""; 
+);
+
+```
 
 ```rust
 use weld::render_names;
@@ -45,6 +56,64 @@ weld! {
     }
 }
 ```
+
+And inside a list group, you can have other groups, either single value or lists.
+
+```rust
+weld!(
+    /* this will render:
+        struct SuperDuper {
+            pub id: i64,
+        };
+    */
+	struct @[([([er sup] |reverse )-duper]|camel)| pascal ] {
+        pub id: i64,
+    }; 
+);
+```
+When modifying a list group, these modifiers will be applied to each item:
+- `singular`,
+- `plural`,
+- casing modifiers    
+    - `lowercase`,
+    - `uppercase`,
+    - `pascalcase`,
+    - `camelcase`,
+    - `snakecase`,
+    - `titlecase`,
+    - `kebabcase`,
+    - `traincase`,
+    - `shoutykebabcase`,
+    - `shoutysnakecase`,
+- string specific
+    - `replace`
+    - `substring`
+    - `padstart`
+    - `padend`
+
+While other modifiers will behave as handling a vector, 
+    - `reverse`: reverses the order of items, not the items themselves, 
+    - `repeat`: repeats the items N times, 
+    - `splice`: replaces the specified range in the vector with the given value (if the value is informed) and either yield the removed items, if used with `out`, or the modified vector if used with `into`,
+    - `slice`: slices the vector, returning the the values whithn the range,
+
+> Using `split` in this mode will split all the items that can be separated, adding them to the collection in the same point
+
+> `join` flattens the collection into a single value (a String), placing a given separator between each (if informed).
+
+
+#### Single Value group
+When creating a group using `()` and applying mods to it, each modification will be applied as in a single value. This group concatenates all the values with no separator. 
+
+```rust
+weld!(
+    // this will render const super_duper = "";
+	const @[((er pus) | reverse ) _duper] = ""; 
+);
+
+```
+
+
 ## Modifiers
 While inside a group, you can apply a chain of modifiers, where each one will perform an operation on the previous result.
 
@@ -61,7 +130,7 @@ Casing style modifiers make use of the crate [heck](https://crates.io/crates/hec
 - **snake_case**`snakecase`,  `snake`,  `snekcase`,  `snek`
 - **Title Case**: `titlecase`,  `title`
 - **kebab-case**: `kebabcase`,  `kebab`
-- **Train-Case**: `traincase`,  `train
+- **Train-Case**: `traincase`,  `train`
 - **SHOUTY-KEBAB-CASE**:`shoutykebabcase`,  `shoutykebab`  
 - **SHOUTY_SNAKE_CASE**: `shoutysnakecase`,  `shoutysnake`,  `shoutysnekcase`,  `shoutysnek`
 
@@ -76,13 +145,12 @@ Casing style modifiers make use of the crate [heck](https://crates.io/crates/hec
 ### Advanced modifiers:
 This crate comes with some modifiers that offer more complex operations that can be pretty helpful, given the right context
 
----
 
 #### `replace`
  It replaces all non-overlapping occurrences of a `pattern`, with a `replacement` string.
 ```rust
 // will render const a_small_ident = "";
-weld!(const @[a long ident | replace{"long","small"}|snek] = "";);
+weld!(const @[(a long ident) | replace{"long","small"}|snek] = "";);
 ``` 
 ---
 #### `substr`,  `substring`
@@ -115,14 +183,19 @@ weld!(const rawhide = @[",rolling' "| times | substr{1}];);
 ---
 #### `padstart`, `padleft`, `padl`
 Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the start of this string.
+
 ---
 #### `padend`, `padright`, `padr`
 Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the end of this string.
+
 ---
 #### `slice`
-Extracts a substring from a string using start and end positions. Both parameters are optional and support negative indexing, where negative values count backwards from the end of the string. When no arguments are provided, returns the full string.---
+Extracts a substring from a string using start and end positions. Both parameters are optional and support negative indexing, where negative values count backwards from the end of the string. When no arguments are provided, returns the full string.
+
+---
 #### `splice`
 Modifies a string in place by removing a portion defined by start and end positions, optionally replacing it with new content. Returns either the removed portion or the modified string depending on the variant used. Both positions are optional and support negative indexing, where negative values count backwards from the end of the string.
+
 ---
 #### `spliceout`, `splice_out`
 ---

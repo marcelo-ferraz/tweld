@@ -1120,7 +1120,7 @@ mod tests {
     #[test]
     fn handling_nested_modifiers() {
         let arguments = vec![            
-            ( quote! { @[((sup er-duper)|camel)| pascal ] }, "SuperDuper"),
+            ( quote! { @[([[[er sup] |reverse ]-duper]|pascal)| camel ] }, "superDuper"),
         ];
         assert_transformations(arguments);
     }
