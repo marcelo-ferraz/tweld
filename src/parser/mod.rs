@@ -253,7 +253,7 @@ fn parse_stream(
 
 fn parse_words(dsl: &mut TweldDsl, state: &TokenParserState, words: &mut Vec<String>) {    
     match state {
-        TokenParserState::InsideGroup(concat) if !concat => {
+        TokenParserState::InsideGroup(single_value) if !single_value => {
             words.iter().for_each(
                 |word| dsl.parts.push(TokenPart::Plain(word.clone()))
             );                    

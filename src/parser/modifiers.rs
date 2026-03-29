@@ -194,6 +194,11 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 }                                                
             },
             "join" => {
+                if input.peek(Token![|]) {
+                    modifiers.push(Modifier::Join("".to_string())); 
+                    continue;   
+                }
+
                 let args;
                 syn::braced!(args in input);
                 let sep = parse_lit_str_char(&args)?;                        
