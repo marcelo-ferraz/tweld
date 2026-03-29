@@ -237,39 +237,31 @@ fn parse_stream(
         println!("{sp}end - words: `{words:?}`");
 
         if !words.is_empty() {
-            println!("{sp}inside loop push plain");
-            
-            match state {
-                TokenParserState::InsideGroup(concat ) if !concat => {
-                    words.iter().for_each(
-                        |word| dsl.parts.push(TokenPart::Plain(word.clone()))
-                    );                    
-                },
-                _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
-            }
-
-            words.clear();
-        }
+            println!("{sp}inside loop push plain");            
+            parse_words(&mut dsl, &state, &mut words);
+        }        
     }
     println!("{sp}end2 - word: `{words:?}`");
-
-            if !words.is_empty() {
-            println!("{sp}outside loop push plain");
-            
-            match state {
-                TokenParserState::InsideGroup(bool) => {
-                    words.iter().for_each(
-                        |word| dsl.parts.push(TokenPart::Plain(word.clone()))
-                    );                    
-                },
-                _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
-            }
-
-            words.clear();
-        }
+    if !words.is_empty() {
+        println!("{sp}outside loop push plain");
+        parse_words(&mut dsl, &state, &mut words);
+    }
     println!("{sp}render_as: {:?}", dsl.render_type);
 
     Ok(dsl)
+}
+
+fn parse_words(dsl: &mut TweldDsl, state: &TokenParserState, words: &mut Vec<String>) {    
+    match state {
+        TokenParserState::InsideGroup(concat) if !concat => {
+            words.iter().for_each(
+                |word| dsl.parts.push(TokenPart::Plain(word.clone()))
+            );                    
+        },
+        _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
+    }
+
+    words.clear();
 }
 
 fn parse_concat_group(input: &syn::parse::ParseBuffer<'_>, dsl: &mut TweldDsl, depth: usize) -> Result<(), syn::Error> {
