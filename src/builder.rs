@@ -59,6 +59,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
     println!("modified value `{values:?}`");
                     
     for modified in modifiers {
+        let array_mode = values.len() > 1;
         for i in 0..values.len() {                    
             match modified {
                 Modifier::Singular => { if values[i].ends_with('s') { values[i].pop(); } },
@@ -87,36 +88,60 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     let end =  end.unwrap_or(values[i].len());
                     values[i] = values[i][start..end].to_string()                            
                 },
-                Modifier::Reverse => values[i] = values[i].chars().rev().collect::<String>(),
+                Modifier::Reverse => {
+                    if array_mode {
+                        values.reverse();
+                        break;
+                    } 
+                    
+                    values[i] = values[i].chars().rev().collect::<String>();
+                },
                 Modifier::Repeat(times) => {
+                    if array_mode {
+                        values = values                        
+                            .iter()
+                            .cloned()
+                            .cycle()
+                            .take(values.len() * *times)
+                            .collect();                        
+                        break;
+                    }
                     println!("before {:?}", values[i]);
                     values[i] = values[i].repeat(*times);
                     println!("after {:?}", values[i]); 
                 },
                 Modifier::Split(pat) => {
-                    let value = values[i]
+                    let value = values[i].clone();
+                    println!("split val `{value}`");
+                    let value = value
                         .split(pat)
                         .map(|v|v.to_string())
                         .collect::<Vec<String>>();
                     values.remove(i);
                     println!("before {values:?}");                                
                     values.splice(i..i, value);
-                    println!("after {values:?}");                                
-
+                    println!("after {values:?}");
                 },
                 Modifier::SplitAt(mid) => {
                     let (left, right) = values[i].split_at(*mid);                                    
                     values.splice(i..i, vec![ left.to_string(), right.to_string(),]);
                 },
-                Modifier::Join(sep) => {
+                Modifier::Join(sep) => {                    
                     let result = values.join(&sep);
                     values.clear();
                     values.push(result);
+                    break;
                 },
                 Modifier::PadStart(width, pat) => {
                     let width: i32 = (*width as i32) - (values[i].len() as i32);
                     println!("the final width {width}");
                     if width > 0 {
+                        // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
+                        // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
+                        // per ex: 
+                        //------------------------------------------------01234567890
+                        // oneStr | padstart { '|_|', 8 } should render  "|_oneStr"    -> remaining padding is 2, as  8 - 6 = 2
+                        // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5
                         let mut val = pat.repeat(width as usize)[0..(width as usize)].to_string();
                         val.push_str(&values[i]);
                         println!("pads :`{val}`");
@@ -127,39 +152,79 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
                     let width: i32 = (*width as i32) - (values[i].len() as i32);
                     println!("the final width {width}");
                     if width > 0 {
+                        // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
+                        // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
+                        // per ex: 
+                        //----------------------------------------------01234567890
+                        // oneStr | padend { '|_|', 8 } should render  "oneStr|_"    -> remaining padding is 2, as  8 - 6 = 2
+                        // oneStr | padend { '|_|', 11 } should render "oneStr|_||_" -> remaining padding is 5, as 11 - 6 = 5
                         values[i].push_str(&pat.repeat(width as usize)[0..(width as usize)]);                                
                         println!("pads :`{}`", values[i]);
-                    }
-                    
+                    }                    
                 },
                 Modifier::Slice(start, end) => {
                     let len = values[i].len() as i32;
 
-                    let start = resolve(len, start.unwrap_or(0));
-                    let end = resolve(len, end.unwrap_or(len));
+                    let start = parse_pos(len, start.unwrap_or(0));
+                    let end = parse_pos(len, end.unwrap_or(len));
+
+                    if array_mode {
+                        if start >= end {
+                            values = vec![];
+                        } else {
+                            values = values
+                                .get(start..end)
+                                .unwrap_or_default()
+                                .to_vec();
+                        }                        
+                        break;
+                    }
 
                     if start >= end {
                         values[i] = String::new();
                         continue;
                     }
 
-                    values[i] = values[i][start..end].to_string();                          
+                    values[i] = values[i]
+                        .get(start..end)
+                        .unwrap_or_default()
+                        .to_string();                          
                 },
-                Modifier::Splice(output, start, delete_end, insert) => {
+                Modifier::Splice(output, start, delete_end, replace_with) => {
                     let len = values[i].len() as i32;
-                    let insert = insert.clone().unwrap_or(String::new());
+                    
 
-                    let start = resolve(len, start.unwrap_or(0));
-                    let end = resolve(len, delete_end.unwrap_or(len));
+                    let start = parse_pos(len, start.unwrap_or(0));
+                    let end = parse_pos(len, delete_end.unwrap_or(len));
+
+                    if array_mode {
+                        if start > end {
+                            values = vec![];                            
+                        } else {
+                            let removed = values
+                                .splice(start..end, replace_with.clone())
+                                .collect();
+
+                            if let Output::Removed = output {
+                                values = removed;
+                            } 
+                        }
+                        break;
+                    }
+
+                    let replace_with = replace_with.clone().unwrap_or(String::new());
 
                     if start > end {
                         values[i] = String::new();
                         continue;
                     }
 
-                    let removed = values[i][start..end].to_string();
+                    let removed = values[i]
+                        .get(start..end)
+                        .unwrap_or_default()
+                        .to_string();
                     
-                    values[i].replace_range(start..end, &insert );
+                    values[i].replace_range(start..end, &replace_with );
 
                     if let Output::Removed = output {
                         values[i] = removed;
@@ -172,7 +237,7 @@ fn modify(value: String, modifiers: &Vec<Modifier>) -> String {
 }
 
 // couldnt think of a name...
-fn resolve(len: i32, val: i32) -> usize {
+fn parse_pos(len: i32, val: i32) -> usize {
     if val < 0 {
         (len + val).max(0) as usize
     } else {

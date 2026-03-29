@@ -309,6 +309,51 @@ mod tests {
         assert_transformations(arguments);
     }
 
+
+    #[test]
+    fn should_split() {
+        let arguments = vec![
+            (
+                quote! { @[getTestStruct  | snek | split{"_"} | title] },
+                "GetTestStruct",
+            ),
+            (
+                /*
+                 * 1 - group (get Test Struct) -> getTestStruct
+                 * 1 - to snake -> get_test_struct
+                 * 2 - split by "_" ->  [get, Test, Struct]
+                 * 3 - reverse ->  [Struct, Test, get,]
+                 * 4 - join with {"_"} ->  Struct_Test_get
+                 * 5 - to pascal  -> StructTestGet
+                 */
+                quote! { @[(get Test Struct) | snek | split{"_"} | reverse | join{"_"}| pascal ] },
+                "StructTestGet",
+            ), 
+            
+            (
+                /*
+                 * 1 - group (get - Test - Struct) -> getTestStruct
+                 * 1 - split by "-" ->  [get, Test, Struct]
+                 * 3 - slice 1 to 3 ->  [Test, Struct]                
+                 */
+                quote! { @[(get - Test - Struct) | split{"-"} | slice{1,3} ] },
+                "TestStruct",
+            ),      
+
+            (
+                /*
+                 * 1 - group (get - Test - Struct) -> getTestStruct
+                 * 1 - split by "-" ->  [get, Test, Struct]
+                 * 3 - slice 1 to 3 ->  [Test, Struct]                
+                 */
+                quote! { @[(get - Test - Struct) | split{"-"} | splice{,1,2, "New"} ] },
+                "getNewStruct",
+            ),      
+        ];
+
+        assert_transformations(arguments);
+    }
+
     #[test]
     fn should_apply_pad_on_left() {
         let arguments = vec![

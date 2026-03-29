@@ -159,6 +159,17 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 modifiers.push(Modifier::SplitAt(mid));
                 
             },
+            "each" => {
+                if !input.peek(syn::token::Brace) {
+                    modifiers.push(Modifier::Split(" ".to_owned()));
+                    continue;
+                }
+
+                let args;
+                syn::braced!(args in input);
+                let sep = parse_lit_str_char(&args)?;
+                modifiers.push(Modifier::Split(sep.to_owned()));
+            },
             "split" => {
                 let args;
                 syn::braced!(args in input);
