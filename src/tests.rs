@@ -301,6 +301,14 @@ mod tests {
                 "\"get_test_struct-by-id\"",
             ),
             (
+                quote! { @[(("get-one" two - "3-4" Struct) | split{"-"} | lower | join{'_'}) -by-id] },
+                "\"get_onetwo_3_4struct-by-id\"",
+            ),
+            (
+                quote! { @[(["get-one" two - "3-4" Struct] | split{'-'} | lower | join{", "})] },
+                "\"get_one_two_3_4_struct-by-id\"",
+            ),
+            (
                 quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{"_"}) -by-id] },
                 "\"get_test_struct-by-id\"",
             ),

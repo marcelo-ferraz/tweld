@@ -79,7 +79,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
     println!("modified values `{values:?}`");
                     
     for modified in modifiers {
-        let array_mode = values.len() > 1;
+        let list_mode = values.len() > 1;
         for i in 0..values.len() {                    
             match modified {
                 Modifier::Singular => { if values[i].ends_with('s') { values[i].pop(); } },
@@ -109,7 +109,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     values[i] = values[i][start..end].to_string()                            
                 },
                 Modifier::Reverse => {
-                    if array_mode {
+                    if list_mode {
                         values.reverse();
                         break;
                     } 
@@ -117,7 +117,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     values[i] = values[i].chars().rev().collect::<String>();
                 },
                 Modifier::Repeat(times) => {
-                    if array_mode {
+                    if list_mode {
                         values = values                        
                             .iter()
                             .cloned()
@@ -131,18 +131,48 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     println!("after {:?}", values[i]); 
                 },
                 Modifier::Split(pat) => {
+                    if list_mode {
+                        values = values
+                            .iter()
+                            .flat_map(|val| val.split(pat))
+                            .filter(|val| !val.is_empty())
+                            .map(|val| val.to_owned())
+                            .collect::<Vec<String>>();
+
+                        break;
+                    }
+
                     let value = values[i].clone();
                     println!("split val `{value}`");
                     let value = value
-                        .split(pat)
+                        .split(pat)                        
                         .map(|v|v.to_string())
                         .collect::<Vec<String>>();
                     values.remove(i);
-                    println!("before {values:?}");                                
-                    values.splice(i..i, value);
+                    println!("before {values:?}");
+                    if value.len() > 0 {
+                        values.splice(i..i, value);
+                    }                                
                     println!("after {values:?}");
                 },
                 Modifier::SplitAt(mid) => {
+                    if list_mode {
+                        values = values
+                            .iter()
+                            .flat_map(|val| {
+                                let len = val.len();
+                                // to avoid out of bounds
+                                let mid = mid.min(&len);
+                                let (a, b) = val.split_at(*mid);
+                                [a, b]
+                            })
+                            .map(|val| val.to_owned())
+                            .filter(|val| !val.is_empty())
+                            .collect::<Vec<String>>();
+
+                        break;
+                    }
+
                     let (left, right) = values[i].split_at(*mid);                                    
                     values.splice(i..i, vec![ left.to_string(), right.to_string(),]);
                 },
@@ -188,7 +218,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     let start = parse_pos(len, start.unwrap_or(0));
                     let end = parse_pos(len, end.unwrap_or(len));
 
-                    if array_mode {
+                    if list_mode {
                         if start >= end {
                             values = vec![];
                         } else {
@@ -217,7 +247,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     let start = parse_pos(len, start.unwrap_or(0));
                     let end = parse_pos(len, delete_end.unwrap_or(len));
 
-                    if array_mode {
+                    if list_mode {
                         if start > end {
                             values = vec![];                            
                         } else {

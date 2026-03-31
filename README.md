@@ -31,7 +31,7 @@ When creating a group using `[]` and applying mods to it, each modification will
 ```rust
 
 weld!(
-    // this will render const super_duper = "";
+    // will render: const super_duper = "";
 	const @[([er sup] | reverse ) _duper] = ""; 
 );
 
@@ -107,7 +107,7 @@ When creating a group using `()` and applying mods to it, each modification will
 
 ```rust
 weld!(
-    // this will render const super_duper = "";
+    // will render: const super_duper = "";
 	const @[((er pus) | reverse ) _duper] = ""; 
 );
 
@@ -149,35 +149,46 @@ This crate comes with some modifiers that offer more complex operations that can
 #### `replace`
  It replaces all non-overlapping occurrences of a `pattern`, with a `replacement` string.
 ```rust
-// will render const a_small_ident = "";
+// will render: const a_small_ident = "";
 weld!(const @[(a long ident) | replace{"long","small"}|snek] = "";);
 ``` 
 ---
 #### `substr`,  `substring`
 This modifier returns the part of this string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied. Both indexes are optional.
 ```rust
-// will render const a_long_ident = "";
+// will render: const a_long_ident = "";
 weld!(const @[(a long identifier)| substr{,9}|snek] = "";);
 ```  
 ---
 #### `reverse`, `rev`
 Reverses the identifier, or literal.
 ```rust
-// will render const tnedi_gnol_a = "";
+// will render: const tnedi_gnol_a = "";
 weld!(const @[(a long identifier)| reverse] = "";);
 
-// will render const nolem_on_nomel_on = "";
+// will render: const nolem_on_nomel_on = "";
 weld!(const @[(no lemon no melon)| reverse|snek] = "";);
 ```  
 ---
 #### `repeat`, `rep`, `times`
 Creates a new value by repeating it `n` times.
 ```rust
-// will render const rawhide = "rolling' ,rolling' ,rolling' ";
+// will render: const rawhide = "rolling' ,rolling' ,rolling' ";
 weld!(const rawhide = @[",rolling' "| times | substr{1}];);
 ```  
 ---
 #### `split`
+This modifier will either break the whole value if applied to a single value group, or break each item in a list, if applied to a list group. This modifier accepts a `char`, a `string` or a number higher than 0.
+
+(the second case will render a different result because it will have all items already separated)
+
+```rust
+// will render: const val = "get, onetwo, 3, 4struct";
+weld!( const val = @[(("get-one" two - "3-4" Struct) | split{'-'} | lower | join{", "})]) = ""; 
+
+// will render: const val = "get, one, two, 3, 4, struct";
+weld!( const val = @[(["get-one" two - "3-4" Struct] | split{'-'} | lower | join{", "})]);                
+```
 ---
 #### `join`
 ---

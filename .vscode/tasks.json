@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cargo test --no-run",
+      "type": "shell",
+      "command": "cargo test --no-run",
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": ["$rustc"]
+    }
+  ]
+}
