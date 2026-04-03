@@ -230,18 +230,80 @@ Extracts a substring from a string using start and end positions. Both parameter
 #### `splice`
 Modifies a string in place by removing a portion defined by start and end positions, optionally replacing it with new content. Returns either the removed portion or the modified string depending on the variant used. Both positions are optional and support negative indexing, where negative values count backwards from the end of the string.
 
-- returning the altered value
-- returning the removed values
-- removing
-- replacing
-- using negative start
-- using negative end
+#### Returning the altered value (`value`, `val`, `into`)
+```rust
+// will render: const val = "g";
+weld!( const val = @[("get_" Test_Struct)| splice{value, 1}] );
+weld!( const val = @[("get_" Test_Struct)| splice{val, 1}] );
+weld!( const val = @[("get_" Test_Struct)| splice{into, 1}] );
+```
+#### Returning the removed value `out`, `removed`, `rm`
+```rust
+// will render: const val = "et_Test_Struct";
+weld!( const val = @[("get_" Test_Struct)| splice{out, 1}] );
+weld!( const val = @[("get_" Test_Struct)| splice{removed, 1}] );
+weld!( const val = @[("get_" Test_Struct)| splice{rm, 1}] );
+```
 
+#### Removing
+```rust
+// will render: const val = "gTest_Struct";
+weld!( const val = @[("get_" Test_Struct)| splice{into, 1, 4}] );
+
+// will render: const val = "et";
+weld!( const val = @[("get_" Test_Struct)| splice{out, 1, 4}] );
+```
+#### Replacing
+```rust
+// will render: const val = "got_Test_Struct";
+weld!( const val = @[("get_" Test_Struct)| splice{value, 1, 4, "ot_"}] );
+
+// will render: const val = "got_Test_Struct";
+weld!( const val = @[("get_" Test_Struct)| splice{val,, 4, "got_"}] );
+
+// will render: const val = "got_Test_Struct";
+weld!( const val = @[("get_" Test_Struct)| splice{into,, 4, "got_"}] );
+
+// will render: const val = "got_";
+weld!( const val = @[("get_" Test_Struct)| splice{value, 1,, "ot_"}] );
+
+// will render: const val = "new";
+weld!( const val = @[("get_" Test_Struct)| splice{val,,, "new"}] );
+```
+#### Using negative start
+Will start counting from the end of the string
+```rust
+// will render: const val = "get_Test_St";
+weld!( const val = @[("get_" Test_Struct)| splice{into, -4 }] );
+
+// will render: const val = "get_Test_Stru";
+weld!( const val = @[("get_" Test_Struct)| splice{out, -2 }] );
+```
+#### Using negative end
+Will count from the end of the string
+```rust
+// will render: const val = "get_Test_Stt";
+weld!( const val = @[("get_" Test_Struct)| splice{into, -4, -1 }] );
+
+// will render: const val = "get_Test_Strut";
+weld!( const val = @[("get_" Test_Struct)| splice{out, -2, -1 }] );
+
+// will render: const val = "get_Test_St<->t";
+weld!( const val = @[("get_" Test_Struct)| splice{into, -4, -1, "<->3" }] );
+```
 
 ---
 #### `spliceout`, `splice_out`
-Alias for `splice{out}`.
+Alias for `splice` with `out` argument.
+```rust
+// will render: const val = "ruc";
+weld!( const val = @[("get_" Test_Struct)| splice_out {-4, -1, "<->3" }] );
+```
 
 ---
 #### `spliceinto`, `splice_into`
-Alias for `splice{into}`.
+Alias for `splice` with the `into` argument.
+```rust
+// will render: const val = "get_Test_St<->t";
+weld!( const val = @[("get_" Test_Struct)| splice_into {-4, -1, "<->3" }] );
+```

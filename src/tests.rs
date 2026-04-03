@@ -698,10 +698,25 @@ mod tests {
                 quote! { @[(get_ Test_Struct)| splice_into{,, "new"}] },
                 "new",
             ),
+            // negative indexes
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, -5}] },
+                "get_Test_S",
+            ),              
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, -5, -1}] },
+                "get_Test_St",
+            ),                            
+            (
+                quote! { @[(get_ Test_Struct)| splice{into, -5, -1, "ot_"}] },
+                "get_Test_Sot_t",
+            ),        
         ];
 
         assert_transformations(arguments);
     }
+
+    
 
     #[test]
     fn should_apply_splice_out() {
@@ -826,6 +841,19 @@ mod tests {
                 quote! { @[(get_ Test_Struct)| splice_out{,, "new"}] },
                 "get_Test_Struct",
             ),  
+                        // negative indexes
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, -5}] },
+                "truct",
+            ),              
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, -5, -1}] },
+                "truc",
+            ),                            
+            (
+                quote! { @[(get_ Test_Struct)| splice{out, -5, -1, "ot_"}] },
+                "truc",
+            ),     
         ];
 
         assert_transformations(arguments);
