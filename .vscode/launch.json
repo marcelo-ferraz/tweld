@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb-dap",
+      "request": "launch",
+      "name": "Debug Tests",
+      "preLaunchTask": "cargo test --no-run",
+      "program": "${workspaceFolder}/target/debug/deps/tweld-1db09c536cd98485",
+      "args": ["tests::tests::should_apply_slice", "--exact", "--nocapture"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "LD_LIBRARY_PATH": "${env:HOME}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib"
+      }
+    }
+  ]
+}

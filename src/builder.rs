@@ -1,42 +1,298 @@
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToShoutyKebabCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToTrainCase}; 
 
-use crate::{models::{Modifier, TokenPart}, parser::TweldDsl};
+use crate::models::{Output, Modifier, TokenPart};
 
 pub fn build_string(parts: Vec<TokenPart>) -> String {
     println!("parts: {parts:?}");
-    let mut full = String::new();
+    let mut result = String::new();
     for part in parts {
-        match part {
-            TokenPart::Literal(value) => full.push_str(&value),
-            TokenPart::Plain(value) => full.push_str(&value.replace(" ", "")),
-            TokenPart::Modified(mut value, modifiers) => {
-                println!("modified value `{value}`");
-                for modified in modifiers {
-                    match modified {
-                        Modifier::Singular => { if value.ends_with('s') { value.pop(); } },
-                        Modifier::Plural => { if !value.ends_with('s') { value.push_str("s"); } },
-                        Modifier::Lowercase => value = value.to_lowercase(),
-                        Modifier::Uppercase => value = value.to_uppercase(),
-                        Modifier::PascalCase => value = value.to_pascal_case(),
-                        Modifier::LowerCamelCase => value = value.to_lower_camel_case(),
-                        Modifier::SnakeCase => value = value.to_snake_case(),
-                        Modifier::KebabCase => value = value.to_kebab_case(),
-                        Modifier::ShoutySnakeCase => value = value.to_shouty_snake_case(),
-                        Modifier::TitleCase => value = value.to_title_case(),
-                        Modifier::ShoutyKebabCase => value = value.to_shouty_kebab_case(),
-                        Modifier::TrainCase => value = value.to_train_case(),
-                        Modifier::Replace(from, to) => value = value.replace(&from, &to),
-                        Modifier::Substr(start, end) => {
-                            let start = start.unwrap_or(0);
-                            let end =  end.unwrap_or(value.len());
-                            value = value[start..end].to_string()                            
-                        }
-                    }                    
-                }
-                full.push_str(&value);
+        let partial = build_from_part(part);
+        result.push_str(&partial);
+    }
+
+    result.replace("r#", "")
+}
+
+fn build_from_part(part: TokenPart) -> String {
+    match part {
+        TokenPart::Plain(value) => return value.clone(),
+        TokenPart::ConcatGroup(grouped_parts) => {
+            let word = grouped_parts
+                .iter()
+                .map(|sub_part| build_from_part(sub_part.clone()))
+                .collect::<String>();
+            word
+        },
+        TokenPart::ListGroup(grouped_parts) => {
+            let word = grouped_parts
+                .iter()
+                .map(|sub_part| build_from_part(sub_part.clone()))
+                .collect::<String>();
+            word
+        },
+        TokenPart::Modified(target, modifiers) => {            
+            match *target {
+                TokenPart::Plain(value) => modify_single(value, &modifiers),
+                TokenPart::ListGroup(items) => {
+                    let value = items
+                        .iter()
+                        .map(|sub_part| build_from_part(sub_part.clone()))
+                        .collect::<Vec<String>>();
+                    
+                    println!("grouped result: {value:?}");
+                    
+                    modify_list(value, &modifiers)
+                },
+                TokenPart::ConcatGroup(grouped_parts) => {
+                    let value = grouped_parts
+                        .iter()
+                        .map(|sub_part| build_from_part(sub_part.clone()))
+                        .collect::<String>();
+                    println!("grouped result: {value}");
+                    
+                    modify_single(value, &modifiers)
+                },
+                TokenPart::Modified(token_part, nested_modifiers) => {
+                    println!("token_part: {token_part:?}");
+                    let nested_result = modify_single(
+                        build_from_part(*token_part), 
+                        &nested_modifiers
+                    );
+                    println!("nested_result: `{nested_result}`");
+
+                    let rr= modify_single(nested_result, &modifiers);
+                    println!("result: {rr}");
+
+                    rr                    
+                },
             }
         }
     }
-
-    return full;
 }
+
+fn modify_single(value: String, modifiers: &Vec<Modifier>) -> String {
+    let values = vec![value.to_string()];
+
+    modify_list(values, modifiers)
+}
+fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
+    println!("modified values `{values:?}`");
+                    
+    for modified in modifiers {
+        let list_mode = values.len() > 1;
+        for i in 0..values.len() {                    
+            match modified {
+                Modifier::Singular => { if values[i].ends_with('s') { values[i].pop(); } },
+                Modifier::Plural => { if !values[i].ends_with('s') { values[i].push_str("s"); } },
+                Modifier::Lowercase => {
+                    println!("before lower {}", values[i]);
+                    values[i] = values[i].to_lowercase();
+                    println!("after lower {}", values[i]);
+                },
+                Modifier::Uppercase => values[i] = values[i].to_uppercase(),
+                Modifier::PascalCase => values[i] = values[i].to_pascal_case(),
+                Modifier::LowerCamelCase => values[i] = values[i].to_lower_camel_case(),
+                Modifier::SnakeCase => values[i] = values[i].to_snake_case(),
+                Modifier::KebabCase => values[i] = values[i].to_kebab_case(),
+                Modifier::ShoutySnakeCase => values[i] = values[i].to_shouty_snake_case(),
+                Modifier::TitleCase => {
+                    println!("before {:?}", values[i]);
+                    values[i] = values[i].to_title_case();
+                    println!("after {:?}", values[i]);
+                },
+                Modifier::ShoutyKebabCase => values[i] = values[i].to_shouty_kebab_case(),
+                Modifier::TrainCase => values[i] = values[i].to_train_case(),
+                Modifier::Replace(from, to) => values[i] = values[i].replace(from, to),
+                Modifier::Substr(start, end) => {
+                    let start = start.unwrap_or(0);
+                    let end =  end.unwrap_or(values[i].len());
+                    values[i] = values[i][start..end].to_string()                            
+                },
+                Modifier::Reverse => {
+                    if list_mode {
+                        values.reverse();
+                        break;
+                    } 
+                    
+                    values[i] = values[i].chars().rev().collect::<String>();
+                },
+                Modifier::Repeat(times) => {
+                    if list_mode {
+                        values = values                        
+                            .iter()
+                            .cloned()
+                            .cycle()
+                            .take(values.len() * *times)
+                            .collect();                        
+                        break;
+                    }
+                    println!("before {:?}", values[i]);
+                    values[i] = values[i].repeat(*times);
+                    println!("after {:?}", values[i]); 
+                },
+                Modifier::Split(pat) => {
+                    if list_mode {
+                        values = values
+                            .iter()
+                            .flat_map(|val| val.split(pat))
+                            .filter(|val| !val.is_empty())
+                            .map(|val| val.to_owned())
+                            .collect::<Vec<String>>();
+
+                        break;
+                    }
+
+                    let value = values[i].clone();
+                    println!("split val `{value}`");
+                    let value = value
+                        .split(pat)                        
+                        .map(|v|v.to_string())
+                        .collect::<Vec<String>>();
+                    values.remove(i);
+                    println!("before {values:?}");
+                    if value.len() > 0 {
+                        values.splice(i..i, value);
+                    }                                
+                    println!("after {values:?}");
+                },
+                Modifier::SplitAt(mid) => {
+                    if list_mode {
+                        values = values
+                            .iter()
+                            .flat_map(|val| {
+                                let len = val.len();
+                                // to avoid out of bounds
+                                let mid = mid.min(&len);
+                                let (a, b) = val.split_at(*mid);
+                                [a, b]
+                            })
+                            .map(|val| val.to_owned())
+                            .filter(|val| !val.is_empty())
+                            .collect::<Vec<String>>();
+
+                        break;
+                    }
+
+                    let value = values.remove(i);
+                    let (left, right) = value.split_at(*mid);                                    
+                    values.splice(i..i, vec![ left.to_string(), right.to_string(),]);
+                },
+                Modifier::Join(sep) => {                    
+                    let result = values.join(&sep);
+                    values.clear();
+                    values.push(result);
+                    break;
+                },
+                Modifier::PadStart(width, pat) => {
+                    let width: i32 = (*width as i32) - (values[i].len() as i32);
+                    println!("the final width {width}");
+                    if width > 0 {
+                        // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
+                        // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
+                        // per ex: 
+                        //------------------------------------------------01234567890
+                        // oneStr | padstart { '|_|', 8 } should render  "|_oneStr"    -> remaining padding is 2, as  8 - 6 = 2
+                        // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5
+                        let mut val = pat.repeat(width as usize)[0..(width as usize)].to_string();
+                        val.push_str(&values[i]);
+                        println!("pads :`{val}`");
+                        values[i] = val;
+                    }
+                },
+                Modifier::PadEnd(width, pat) => {
+                    let width: i32 = (*width as i32) - (values[i].len() as i32);
+                    println!("the final width {width}");
+                    if width > 0 {
+                        // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
+                        // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
+                        // per ex: 
+                        //----------------------------------------------01234567890
+                        // oneStr | padend { '|_|', 8 } should render  "oneStr|_"    -> remaining padding is 2, as  8 - 6 = 2
+                        // oneStr | padend { '|_|', 11 } should render "oneStr|_||_" -> remaining padding is 5, as 11 - 6 = 5
+                        values[i].push_str(&pat.repeat(width as usize)[0..(width as usize)]);                                
+                        println!("pads :`{}`", values[i]);
+                    }                    
+                },
+                Modifier::Slice(start, end) => {
+                    let len = values[i].len() as i32;
+
+                    let start = parse_pos(len, start.unwrap_or(0));
+                    let end = parse_pos(len, end.unwrap_or(len));
+
+                    if list_mode {
+                        if start >= end {
+                            values = vec![];
+                        } else {
+                            values = values
+                                .get(start..end)
+                                .unwrap_or_default()
+                                .to_vec();
+                        }                        
+                        break;
+                    }
+
+                    if start >= end {
+                        values[i] = String::new();
+                        continue;
+                    }
+
+                    values[i] = values[i]
+                        .get(start..end)
+                        .unwrap_or_default()
+                        .to_string();                          
+                },
+                Modifier::Splice(output, start, delete_end, replace_with) => {
+                    let len = values[i].len() as i32;
+                    
+
+                    let start = parse_pos(len, start.unwrap_or(0));
+                    let end = parse_pos(len, delete_end.unwrap_or(len));
+
+                    if list_mode {
+                        if start > end {
+                            values = vec![];                            
+                        } else {
+                            let removed = values
+                                .splice(start..end, replace_with.clone())
+                                .collect();
+
+                            if let Output::Removed = output {
+                                values = removed;
+                            } 
+                        }
+                        break;
+                    }
+
+                    let replace_with = replace_with.clone().unwrap_or(String::new());
+
+                    if start > end {
+                        values[i] = String::new();
+                        continue;
+                    }
+
+                    let removed = values[i]
+                        .get(start..end)
+                        .unwrap_or_default()
+                        .to_string();
+                    
+                    values[i].replace_range(start..end, &replace_with );
+
+                    if let Output::Removed = output {
+                        values[i] = removed;
+                    }                    
+                }
+            }                    
+        }                    
+    }
+    values.join("")
+}
+
+// couldnt think of a name...
+fn parse_pos(len: i32, val: i32) -> usize {
+    if val < 0 {
+        (len + val).max(0) as usize
+    } else {
+        val.min(len) as usize
+    }
+}
+

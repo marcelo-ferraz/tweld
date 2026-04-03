@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Modifier {
     Singular,
     Plural,
@@ -13,20 +13,43 @@ pub enum Modifier {
     ShoutyKebabCase,
     TrainCase,
     Replace(String, String),
-    Substr(Option<usize>, Option<usize>),    
+    Substr(Option<usize>, Option<usize>),
+    Reverse,
+    Repeat(usize),
+    Split(String),
+    SplitAt(usize),
+    Join(String),
+    PadStart(usize, String),
+    PadEnd(usize, String),
+    Slice(Option<i32>, Option<i32>),
+    Splice(Output, Option<i32>, Option<i32>, Option<String>)
+}
+
+#[derive(Debug, Clone)]
+pub enum Output {
+    Value,
+    Removed
+}
+
+#[derive(Debug, Clone)]
+pub enum TokenPart {
+    Plain(String),
+    ConcatGroup(Vec<TokenPart>),  
+    ListGroup(Vec<TokenPart>),  
+    Modified(Box<TokenPart>, Vec<Modifier>),
 }
 
 #[derive(Debug)]
-pub enum TokenPart {
-    Literal(String),    
-    Plain(String),    
-    Modified(String, Vec<Modifier>),
+pub enum TokenParserState {    
+    InsideBrackets,
+    InsideGroup(bool),
+    Modifiers
 }
 
-pub enum StringParserState {
-    Idle,
-    InsideBrackets,
-    InsideGroup,
-    Modifiers
+
+#[derive(Debug, Clone)]
+pub enum RenderType {
+    StringLiteral,
+    Identifier
 }
 
