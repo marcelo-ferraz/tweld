@@ -217,14 +217,54 @@ weld!( const val = @[["get-" Test - Struct] | join{","}] );
 ---
 #### `padstart`, `padleft`, `padl`
 Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the start of this string.
+```rust
+/*
+                             0         1         2         3
+                             0123456789012345678901234567890 */
+// will render: const val = "-----get-Test-Struct",
+weld!( const val = @[("get-" Test-Struct) | padleft{20, "-"} ]);
+
+/*
+                             0         1         2         3
+                             0123456789012345678901234567890 */
+// will render: const val = "get-Test-Struct",
+weld!( const val = quote! { @[("get-" Test-Struct) | padstart{5, "-"} ]);
+```
 
 ---
 #### `padend`, `padright`, `padr`
 Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the end of this string.
+```rust
+/*
+                             0         1         2         3
+                             0123456789012345678901234567890 */
+// will render: const val = "get-Test-Struct-----",
+weld!( const val = @[("get-" Test-Struct) | padright{20, "-"} ]);
+
+/*
+                             0         1         2         3
+                             0123456789012345678901234567890 */
+// will render: const val = "get-Test-Struct",
+weld!( const val = @[("get-" Test-Struct) | padend{5, "-"} ]);
+```
 
 ---
 #### `slice`
 Extracts a substring from a string using start and end positions. Both parameters are optional and support negative indexing, where negative values count backwards from the end of the string. When no arguments are provided, returns the full string.
+If the start is less than end, it will return an empty value
+```rust
+// will render: const val = "get_Struct",
+weld!( const val = @["get_" Test_Struct | slice{5}] );
+
+// will render: const val = "get_Test_St",
+weld!( const val = @[("_get_" Test_Struct) | slice{1, -4}] );
+
+// will render: const val = "St",
+weld!( const val = @[("_get_" Test_Struct) | slice{-6, -4}] );
+
+// will render: const val = "get_",
+weld!( const val = @["get_" Test_Struct| slice{-4,-6}] );
+```            
 
 ---
 #### `splice`
