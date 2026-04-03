@@ -173,7 +173,8 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                         break;
                     }
 
-                    let (left, right) = values[i].split_at(*mid);                                    
+                    let value = values.remove(i);
+                    let (left, right) = value.split_at(*mid);                                    
                     values.splice(i..i, vec![ left.to_string(), right.to_string(),]);
                 },
                 Modifier::Join(sep) => {                    

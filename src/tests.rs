@@ -306,11 +306,21 @@ mod tests {
             ),
             (
                 quote! { @[(["get-one" two - "3-4" Struct] | split{'-'} | lower | join{", "})] },
-                "\"get_one_two_3_4_struct-by-id\"",
+                "\"get, one, two, 3, 4, struct\"",
             ),
             (
                 quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{"_"}) -by-id] },
                 "\"get_test_struct-by-id\"",
+            ),
+
+            (
+                quote! { @[(("get-" Test - Struct) | split{6} | lower | join{"_"})] },
+                "\"get-te_st-struct\"",
+            ),
+
+            (
+                quote! { @[["get-" Test - Struct] | split{4} | lower | join{"_"}] },
+                "\"get-_test_-_stru_ct\"",
             ),
         ];
 
@@ -319,7 +329,7 @@ mod tests {
 
 
     #[test]
-    fn should_split() {
+    fn handling_complex_lists() {
         let arguments = vec![
             (
                 quote! { @[getTestStruct  | snek | split{"_"} | title] },

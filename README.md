@@ -180,17 +180,40 @@ weld!(const rawhide = @[",rolling' "| times | substr{1}];);
 #### `split`
 This modifier will either break the whole value if applied to a single value group, or break each item in a list, if applied to a list group. This modifier accepts a `char`, a `string` or a number higher than 0.
 
-(the second case will render a different result because it will have all items already separated)
+(The second case will render a different result because it will have all items splitted)
 
+Splitting by a char, or a string:
 ```rust
 // will render: const val = "get, onetwo, 3, 4struct";
 weld!( const val = @[(("get-one" two - "3-4" Struct) | split{'-'} | lower | join{", "})]) = ""; 
 
 // will render: const val = "get, one, two, 3, 4, struct";
-weld!( const val = @[(["get-one" two - "3-4" Struct] | split{'-'} | lower | join{", "})]);                
+weld!( const val = @[["get-one" two - "3-4" Struct] | split{"-"} | lower | join{", "}]);                
 ```
+
+Splitting by an index:
+```rust
+// will render: const val = "get-te_st-struct";
+weld!( const val = @[(("get-" Test - Struct) | split{6} | lower | join{"_"})] );
+
+// will render: const val = "ge,t-,te,st,-,st,ruct";
+weld!( const val = @[["get-" Test - Struct] | split{2} | lower | join{","}] );
+```
+When splitting by index, if the value is bigger than the length, the argument will be ignored
+```rust
+// will render: const val = "get-,test,-,stru,ct";
+weld!( const val = @[["get-" Test - Struct] | split{4} | lower | join{","}] );
+```
+
 ---
 #### `join`
+
+Flattens the list of values into a single value, placing a given separator between each. The separator can be a `string` or a `char`. (If used in a scenario where the previous result is a single value, it wont have any impact).
+```rust
+// will render: const val = "get-,Test,-,Struct";
+weld!( const val = @[["get-" Test - Struct] | join{","}] );
+```
+
 ---
 #### `padstart`, `padleft`, `padl`
 Padstart pads the value with a given string (repeated and/or truncated, if needed) so that the resulting string has a given length. The padding is applied from the start of this string.
@@ -207,7 +230,18 @@ Extracts a substring from a string using start and end positions. Both parameter
 #### `splice`
 Modifies a string in place by removing a portion defined by start and end positions, optionally replacing it with new content. Returns either the removed portion or the modified string depending on the variant used. Both positions are optional and support negative indexing, where negative values count backwards from the end of the string.
 
+- returning the altered value
+- returning the removed values
+- removing
+- replacing
+- using negative start
+- using negative end
+
+
 ---
 #### `spliceout`, `splice_out`
+Alias for `splice{out}`.
+
 ---
 #### `spliceinto`, `splice_into`
+Alias for `splice{into}`.
