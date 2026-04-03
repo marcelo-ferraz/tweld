@@ -92,10 +92,10 @@ When modifying a list group, these modifiers will be applied to each item:
     - `padend`
 
 While other modifiers will behave as handling a vector, 
-    - `reverse`: reverses the order of items, not the items themselves, 
-    - `repeat`: repeats the items N times, 
-    - `splice`: replaces the specified range in the vector with the given value (if the value is informed) and either yield the removed items, if used with `out`, or the modified vector if used with `into`,
-    - `slice`: slices the vector, returning the the values whithn the range,
+- `reverse`: reverses the order of items, not the items themselves, 
+- `repeat`: repeats the items N times, 
+- `splice`: replaces the specified range in the vector with the given value (if the value is informed) and either yield the removed items, if used with `out`, or the modified vector if used with `into`,
+- `slice`: slices the vector, returning the the values whithn the range,
 
 > Using `split` in this mode will split all the items that can be separated, adding them to the collection in the same point
 
