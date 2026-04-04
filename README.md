@@ -36,6 +36,23 @@ use tweld::weld;
  
 ---
 
+## The Core Idea
+ 
+Everything in tweld revolves around one macro — `weld!` — and one syntax: `@[...]`, I fondly call it the interpolator, but the final name is pending.
+ 
+Anything inside `@[...]` gets transformed, *welded* and fused (not literally — the implications would be unwieldy), and emitted as either an identifier or the content of a string literal. A chain of modifiers separated by `|` transforms the value step by step.
+ 
+```rust
+weld!(
+    fn @[(get user profiles) | snek]() { ... }
+    // renders: fn get_user_profiles() { ... }
+);
+```
+ 
+The modifiers don't need to produce something sensible at every intermediate step. They just need to produce something valid by the end. What happens in between is your own affair.
+ 
+---
+
 ## The `@[]` "interpolator"
 Anything inside the `@[]` "interpolator" will be fused together. You can use the `@[]` syntax inside structs, functions, trait implementations, or anywhere an identifier is expected, as well as in the content of string literal.
 
