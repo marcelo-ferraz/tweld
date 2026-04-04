@@ -1,13 +1,40 @@
-
 # Tweld
-(you can read it as **tiny-weld**, **token-weld**, or just **tweld**, I am just happy to be here)    
-   
-Tweld is a procedural macro toolkit and naming DSL for Rust. It allows you to dynamically generate, modify, and compose identifiers directly within your Rust code using a clean, safe, and intuitive `@[]` syntax (hopefully). Because the parsing happens safely inside the macro, any syntax errors in your modifiers will point exactly to the broken line in your IDE (also hopefully).   
+ 
+> *You can read it as tiny-weld, token-weld, or just tweld. The important thing is that it compiles.*
+ 
+Tweld is a procedural macro toolkit and naming DSL for Rust. It lets you dynamically generate, modify, and compose identifiers directly in your source code using a clean `@[]` syntax — because sometimes the identifier you need doesn't quite exist yet, and writing a full proc-macro just to rename a function feels like bringing a freight train to post a letter.
+One can only hope the syntax is clean and intuitive enough.
 
 ```rust
 weld!("## @[(the idea | title)]");
 ```
-The name comes from idea of fusing tokens, to help when writing macros, or macros for your macros (which was my initial case).
+ 
+The name comes from the idea of fusing tokens together. It started as a tool for writing macros for macros (which sounds recursive, because it is), and then grew somewhat beyond its original remit.
+
+---
+ 
+## Installation
+ 
+Add it to your `Cargo.toml`:
+ 
+```toml
+[dependencies]
+tweld = "0.1.0-rc.2"  # check crates.io for the latest
+```
+ 
+Or, if you prefer:
+ 
+```sh
+cargo add tweld
+```
+ 
+Then bring it into scope:
+ 
+```rust
+use tweld::weld;
+```
+ 
+---
 
 ## The `@[]` "interpolator"
 Anything inside the `@[]` "interpolator" will be fused together. You can use the `@[]` syntax inside structs, functions, trait implementations, or anywhere an identifier is expected, as well as in the content of string literal.
