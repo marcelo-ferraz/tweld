@@ -44,8 +44,12 @@ weld!(
 ```
  
 This is a contrived example — but the point is that you can compose arbitrarily, and as long as the final result is a valid Rust identifier, the compiler will be perfectly happy and won't ask any questions.
- 
----
+
+
+## Raw Indentifiers
+
+Raw identifiers are handled automatically. If a token is a reserved word, you can pass it in using Rust's `r#` prefix — `r#loop`, `r#type`, and so on — and `weld!` will accept it without complaint. In the other direction, if the result of a modifier chain happens to land on a reserved word, the `r#` prefix will be added for you. If you passed a raw identifier in but the transformations produced something that no longer needs it, the prefix is quietly removed. You shouldn't have to think about it either way.
+
  
 ## Modifiers
  
