@@ -105,18 +105,18 @@ Modifiers are chained with `|` inside a group. Each one receives the output of t
  
 Casing modifiers use the [`heck`](https://docs.rs/heck) crate under the hood.
  
-| Modifier | Aliases | Example output |
-|---|---|---|
-| `lowercase` | `lower` | `hello_world` |
-| `uppercase` | `upper` | `HELLO_WORLD` |
-| `pascalcase` | `pascal`, `uppercamelcase` | `HelloWorld` |
-| `camelcase` | `camel`, `lowercamelcase` | `helloWorld` |
-| `snakecase` | `snek`, `snake`, `snekcase` | `hello_world` |
-| `titlecase` | `title` | `Hello World` |
-| `kebabcase` | `kebab` | `hello-world` |
-| `traincase` | `train` | `Hello-World` |
-| `shoutykebabcase` | `shoutykebab` | `HELLO-WORLD` |
-| `shoutysnakecase` | `shoutysnake`, `shoutysnek` | `HELLO_WORLD` |
+| Modifier          | Aliases                     | Example output |
+|-------------------|-----------------------------|----------------|
+| `lowercase`       | `lower`                     | `hello_world`  |
+| `uppercase`       | `upper`                     | `HELLO_WORLD`  |
+| `pascalcase`      | `pascal`, `uppercamelcase`  | `HelloWorld`   |
+| `camelcase`       | `camel`, `lowercamelcase`   | `helloWorld`   |
+| `snakecase`       | `snek`, `snake`, `snekcase` | `hello_world`  |
+| `titlecase`       | `title`                     | `Hello World`  |
+| `kebabcase`       | `kebab`                     | `hello-world`  |
+| `traincase`       | `train`                     | `Hello-World`  |
+| `shoutykebabcase` | `shoutykebab`               | `HELLO-WORLD`  |
+| `shoutysnakecase` | `shoutysnake`, `shoutysnek` | `HELLO_WORLD`  |
  
 > **A note on tokens vs strings:** When applied to identifiers (function names, struct names, etc.), `kebabcase`, `traincase`, and `shoutykebabcase` won't work — hyphenated identifiers aren't valid Rust. `titlecase` will behave like `pascalcase` in that context. When applied to string literals, all of them work as intended.
  
