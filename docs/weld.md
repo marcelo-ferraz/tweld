@@ -1,7 +1,4 @@
 # Weld
-[![Crates.io](https://img.shields.io/crates/v/tweld.svg)](https://crates.io/crates/tweld)
-[![Docs.rs](https://docs.rs/tweld/badge.svg)](https://docs.rs/tweld)
-[![License](https://img.shields.io/crates/l/tweld.svg)](LICENSE)
 
 `weld!` is the single entrypoint for the crate. It accepts any valid Rust item — structs, functions, trait implementations, constants, string literals — and processes any `@[...]` interpolators it finds within, emitting their result. The interpolator syntax is intentionally minimal: tokens go in, a chain of `|` separates modifiers and transforms the previous result in the chain, and an identifier or string value comes out. 
 
@@ -13,7 +10,7 @@ Inside `@[...]`, you can organise tokens into named groups and apply modifiers t
  
 Tokens inside `()` are concatenated into a single value before any modifiers are applied. Think of it as: *everything in here is one thing*.
  
-```rust,no_run
+```rust,ignore
 weld!(
     const @[(super duper) | snek] = "";
     // renders: const super_duper = "";
@@ -24,7 +21,7 @@ weld!(
  
 Tokens inside `[]` are kept as a *collection*. Modifiers that work on individual values (casing, replace, trim, etc.) are applied to each item independently. Modifiers that work on structure (reverse, join, slice, etc.) operate on the collection as a whole.
  
-```rust,no_run
+```rust,ignore
 weld!(
     const @[([er sup] | reverse) _duper] = "";
     // renders: const super_duper = "";
@@ -34,7 +31,7 @@ weld!(
  
 Groups can be nested, and modifiers chain naturally across levels:
  
-```rust,no_run
+```rust,ignore
 weld!(
     struct @[([([er sup] | reverse) -duper] | camel) | pascal] {
         pub id: i64,
@@ -78,7 +75,7 @@ Casing modifiers use the [`heck`](https://docs.rs/heck) crate under the hood.
  
 `singular` strips a trailing `s`; `plural` adds one. No linguistic analysis is happening here — it's string manipulation wearing a vocabulary waistcoat.
  
-```rust,no_run
+```rust,ignore
 weld!(
     pub struct @[Users | singular | pascal] { pub id: i64 }
     // renders: pub struct User { ... }
@@ -91,8 +88,8 @@ weld!(
  
 Replaces all non-overlapping occurrences of a pattern with a replacement string.
  
-```rust,no_run
-weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "";);
+```rust,ignore
+weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "");
 // renders: const a_small_ident = "";
 ```
  
@@ -102,8 +99,8 @@ weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "";);
  
 Returns the substring from `start` up to (not including) `end`. Both are optional. Indexes are zero-based.
  
-```rust,no_run
-weld!(const @[(a long identifier) | substr{, 9} | snek] = "";);
+```rust,ignore
+weld!(const @[(a long identifier) | substr{, 9} | snek] = "");
 // renders: const a_long_ident = "";
 ```
  
@@ -114,8 +111,8 @@ weld!(const @[(a long identifier) | substr{, 9} | snek] = "";);
 On a single value: reverses the characters.
 On a list group: reverses the order of items (not the characters within them).
  
-```rust,no_run
-weld!(const @[(no lemon no melon) | reverse | snek] = "";);
+```rust,ignore
+weld!(const @[(no lemon no melon) | reverse | snek] = "");
 // renders: const nolem_on_nomel_on = "";
 ```
  
@@ -125,7 +122,7 @@ weld!(const @[(no lemon no melon) | reverse | snek] = "";);
  
 Creates a new value by repeating the current value `n` times.
  
-```rust,no_run
+```rust,ignore
 weld!(const rawhide = @[",rolling' " | timess{3} | substr{1}]);
 // renders: const rawhide = "rolling' ,rolling' ,rolling' ";
 ```
@@ -142,7 +139,7 @@ The behaviour differs between group types:
  
 **Splitting by character or string:**
  
-```rust,no_run
+```rust,ignore
 // Single-value group: splits on '-', lowercases each part, joins with ", "
 weld!(const val = @[(("get-one" two - "3-4" Struct) | split{'-'} | lower | join{", "})]);
 // renders: const val = "get, onetwo, 3, 4struct";
@@ -156,7 +153,7 @@ weld!(const val = @[["get-one" two - "3-4" Struct] | split{"-"} | lower | join{"
  
 Splits the value every N characters. If the index is larger than the value's length, the argument is ignored.
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[(("get-" Test - Struct) | split{6} | lower | join{"_"})]);
 // renders: const val = "get-te_st-struct";
  
@@ -170,7 +167,7 @@ weld!(const val = @[["get-" Test - Struct] | split{2} | lower | join{","}]);
  
 Flattens a list into a single value, with an optional separator between items. If the current value is already a single value, it passes through unchanged.
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[["get-" Test - Struct] | join{","}]);
 // renders: const val = "get-,Test,-,Struct";
 ```
@@ -181,7 +178,7 @@ weld!(const val = @[["get-" Test - Struct] | join{","}]);
  
 Pads from the **start** of the value until it reaches `length` characters. The pad string is repeated and/or truncated as needed. If the value is already at or beyond `length`, it's returned unchanged.
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get-" Test-Struct) | padleft{20, "-"}]);
 // renders: const val = "-----get-Test-Struct"
 //          (total length 20, padded with '-' on the left)
@@ -193,7 +190,7 @@ weld!(const val = @[("get-" Test-Struct) | padleft{20, "-"}]);
  
 Same as `padstart`, but pads from the **end**.
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get-" Test-Struct) | padright{20, "-"}]);
 // renders: const val = "get-Test-Struct-----"
 ```
@@ -204,7 +201,7 @@ weld!(const val = @[("get-" Test-Struct) | padright{20, "-"}]);
  
 Extracts a portion of the string. Both positions are optional and support **negative indexing** (counting backwards from the end). If `start` is greater than `end`, returns an empty value.
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @["get_" Test_Struct | slice{5}]);
 // renders: const val = "get_Struct"
  
@@ -233,7 +230,7 @@ The most involved modifier. Removes a range from the value, optionally replaces 
  
 **Basic removal:**
  
-```rust,no_run
+```rust,ignore
 // Remove from position 1 onwards → return the result
 weld!(const val = @[("get_" Test_Struct) | splice{into, 1}]);
 // renders: const val = "g"
@@ -245,7 +242,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{out, 1}]);
  
 **Removing a range:**
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{into, 1, 4}]);
 // renders: const val = "gTest_Struct"
  
@@ -255,7 +252,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{out, 1, 4}]);
  
 **Replacing a range:**
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{value, 1, 4, "ot_"}]);
 // renders: const val = "got_Test_Struct"
  
@@ -274,7 +271,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{val, , , "new"}]);
  
 **Negative positions** count from the end:
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{into, -4}]);
 // renders: const val = "get_Test_St"
  
@@ -284,7 +281,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{into, -4, -1, "<->"}]);
  
 **Aliases:** `splice_into` and `splice_out` are shorthand for `splice{into, ...}` and `splice{out, ...}`:
  
-```rust,no_run
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice_out{-4, -1}]);
 // renders: const val = "ruc"
  
@@ -298,7 +295,7 @@ weld!(const val = @[("get_" Test_Struct) | splice_into{-4, -1, "<->"}]);
  
 Here's what the modifier chain looks like when used for something you might actually want to do:
  
-```rust,no_run
+```rust,ignore
 use tweld::weld;
  
 weld! {
