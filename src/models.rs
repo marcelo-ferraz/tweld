@@ -4,7 +4,7 @@ pub enum Modifier {
     Plural,
     Lowercase,
     Uppercase,
-    PascalCase,    
+    PascalCase,
     LowerCamelCase,
     SnakeCase,
     KebabCase,
@@ -22,34 +22,32 @@ pub enum Modifier {
     PadStart(usize, String),
     PadEnd(usize, String),
     Slice(Option<i32>, Option<i32>),
-    Splice(Output, Option<i32>, Option<i32>, Option<String>)
+    Splice(Output, Option<i32>, Option<i32>, Option<String>),
 }
 
 #[derive(Debug, Clone)]
 pub enum Output {
     Value,
-    Removed
+    Removed,
 }
 
 #[derive(Debug, Clone)]
 pub enum TokenPart {
     Plain(String),
-    ConcatGroup(Vec<TokenPart>),  
-    ListGroup(Vec<TokenPart>),  
+    ConcatGroup(Vec<TokenPart>),
+    ListGroup(Vec<TokenPart>),
     Modified(Box<TokenPart>, Vec<Modifier>),
 }
 
 #[derive(Debug)]
-pub enum TokenParserState {    
+pub enum TokenParserState {
     InsideBrackets,
     InsideGroup(bool),
-    Modifiers
+    Modifiers,
 }
-
 
 #[derive(Debug, Clone)]
 pub enum RenderType {
     StringLiteral,
-    Identifier
+    Identifier,
 }
-
