@@ -1170,4 +1170,228 @@ mod tests {
         ];
         assert_transformations(arguments);
     }
+
+    #[test]
+    fn should_apply_substr_end_only() {
+        let arguments = vec![
+            (quote! { @[( a _ long identifier) | substr{, 9}] }, "a_longide"),
+            (quote! { @[( a _ long identifier) | substring{, 9}] }, "a_longide"),
+            (quote! { @[("a long identifier") | substr{, 9}] }, "\"a long id\""),
+            //            01234567890123456789
+            //            0         1
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_substr_start_only() {
+        let arguments = vec![
+            (quote! { @[( a long identifier) | substr{3}] }, "ngidentifier"),
+            (quote! { @[( a long identifier) | substring{3}] }, "ngidentifier"),
+            (quote! { @[("a long identifier") | substr{4}] }, "\"ng identifier\""),
+            //            01234567890123456789
+            //            0         1
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_substr_start_and_end() {
+        let arguments = vec![
+            (quote! { @[( a long identifier) | substr{1, 7}] }, "longid"),
+            (quote! { @[( a long identifier) | substring{1, 7}] }, "longid"),
+            (quote! { @[("a long identifier") | substr{2, 9}] }, "\"long id\""),
+            //            01234567890123456789
+            //            0         1
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_substr_no_args() {
+        // no args returns the full value unchanged
+        let arguments = vec![
+            quote! { @[(a _ long identifier) | substr{}] },
+            quote! { @[(a _ long identifier) | substring{}] },
+        ];
+        assert_transformations_same_output(arguments, "a_longidentifier");
+    }
+
+    #[test]
+    fn should_apply_substr_chained() {
+        let arguments = vec![
+            (
+                quote! { @[(a Long identifier) | substr{, 9} | snek] },
+                "a_longiden",
+            ),
+            (
+                quote! { @[(a long identifier) | substr{2, 8} | upper] },
+                "ONGIDE",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_replace_on_list_group() {
+        // replace is applied to each item individually
+        let arguments = vec![
+            (
+                quote! { @[[get TestStruct TestInfo] | replace{"Test", "My"}] },
+                "getMyStructMyInfo",
+            ),
+            (
+                quote! { @[["get" TestStruct TestInfo] | replace{"Test", "My"} | join{", "}] },
+                "\"get, MyStruct, MyInfo\"",
+            ),
+            (
+                quote! { @[([get TestStruct "TestInfo"] | replace{"Test", "My"} | snek | join{"_"})] },
+                "\"get_my_struct_my_info\"",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_singular_on_list_group() {
+        let arguments = vec![
+            (
+                quote! { @[[Users "Posts" Comments] | singular | join{"_"}] },
+                "\"User_Post_Comment\"",
+            ),
+            (
+                quote! { @[[Users Posts Comments] | singular | snek | join{"_"}] },
+                "user_post_comment",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_plural_on_list_group() {
+        let arguments = vec![
+            (
+                quote! { @[[User Post "Comment"] | plural | join{"_"}] },
+                "\"Users_Posts_Comments\"",
+            ),
+            (
+                quote! { @[[User Post Comment] | plural | lower | join{"_"}] },
+                "users_posts_comments",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_padstart_on_list_group() {
+        // padstart applied to each item individually
+        let arguments = vec![
+            (
+                quote! { @[(["get" Test Struct] | padstart{6, "_"} | join{","})] },
+                "\"___get,__Test,Struct\"",
+            ),
+            (
+                quote! { @[([a "bb" ccc] | padl{4, "0"} | join{","})] },
+                "\"000a,00bb,0ccc\"",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_padend_on_list_group() {
+        // padend applied to each item individually
+        let arguments = vec![
+            (
+                quote! { @[([get "Test" Struct] | padend{6, "_"} | join{","})] },
+                "\"get___,Test__,Struct\"",
+            ),
+            (
+                quote! { @[([a "bb" ccc] | padr{4, "0"} | join{","})] },
+                "\"a000,bb00,ccc0\"",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_repeat_on_list_group() {
+        // repeat on a list group repeats the items N times
+        let arguments = vec![
+            (
+                quote! { @[["get" Test] | repeat{2} | join{"_"}] },
+                "\"get_Test_get_Test\"",
+            ),
+            (
+                quote! { @[["get" Test] | rep{3} | join{""}] },
+                "\"getTestgetTestgetTest\"",
+            ),
+            (
+                quote! { @[["get" Test] | times{2} | lower | join{"_"}] },
+                "\"get_test_get_test\"",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_join_without_separator() {
+        let arguments = vec![
+            (
+                quote! { @[["get-" Test - Struct] | join{}] },
+                "\"get-Test-Struct\"",
+            ),
+            (
+                quote! { @[["get-" Test - Struct] | split{"-"} | lower | join] },
+                "\"getteststruct\"",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
+
+    #[test]
+    fn should_apply_splice_default_mode() {
+        // omitting the mode keyword defaults to into behaviour
+        let arguments = vec![
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1}] },
+                "g",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1, 4}] },
+                "gTest_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1, 4, "ot_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{,, 4, "got_"}] },
+                "got_Test_Struct",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, 1,, "ot_"}] },
+                "got_",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{,,, "new"}] },
+                "new",
+            ),
+            // negative indexes
+            (
+                quote! { @[(get_ Test_Struct)| splice{, -5}] },
+                "get_Test_S",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, -5, -1}] },
+                "get_Test_St",
+            ),
+            (
+                quote! { @[(get_ Test_Struct)| splice{, -5, -1, "ot_"}] },
+                "get_Test_Sot_t",
+            ),
+        ];
+        assert_transformations(arguments);
+    }
 }
+
