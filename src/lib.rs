@@ -2,6 +2,7 @@
 //! [![Crates.io](https://img.shields.io/crates/v/tweld.svg)](https://crates.io/crates/tweld)
 //! [![Docs.rs](https://docs.rs/tweld/badge.svg)](https://docs.rs/tweld)
 //! [![License](https://img.shields.io/crates/l/tweld.svg)](https://choosealicense.com/licenses/)
+//! [![CI](https://github.com/marcelo-ferraz/tweld/actions/workflows/ci.yml/badge.svg)](https://github.com/marcelo-ferraz/tweld/actions/workflows/ci.yml)
 //!
 //! > *You can read it as tiny-weld, token-weld, or just tweld. The important thing is that it compiles.*
 //!  
