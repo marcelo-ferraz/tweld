@@ -12,9 +12,10 @@ env:
 jobs:
   test:
     name: Test
+    needs: lint
     runs-on: ubuntu-latest
     container: rust:slim-bookworm
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
