@@ -11,8 +11,7 @@ env:
 
 jobs:
   ci:
-    name: Single CI flow
-    needs: lint
+    name: Single CI flow    
     runs-on: ubuntu-latest
     container: rust:slim-bookworm
 
