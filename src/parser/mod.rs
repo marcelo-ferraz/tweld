@@ -81,20 +81,6 @@ fn parse_stream(
                     println!("{sp}leaving modifiers");
                     continue;
                 }
-
-                if input.peek(Token![-]) {
-                    println!("{sp}found token b -");
-                    input.parse::<Token![-]>()?;
-                    dsl.parts.push(TokenPart::Plain("-".to_string()));
-                    continue;
-                }
-
-                if input.peek(Token![_]) {
-                    println!("{sp}found token b _");
-                    input.parse::<Token![_]>()?;
-                    dsl.parts.push(TokenPart::Plain("_".to_string()));
-                    continue;
-                }
             
                 if input.peek(syn::Ident) {
                     let result = input
@@ -124,6 +110,21 @@ fn parse_stream(
                     dsl.render_type = RenderType::StringLiteral;
                     dsl.parts.push(TokenPart::Plain(result));
                     continue;                      
+                }
+
+
+                if input.peek(Token![-]) {
+                    println!("{sp}found token b -");
+                    input.parse::<Token![-]>()?;
+                    dsl.parts.push(TokenPart::Plain("-".to_string()));
+                    continue;
+                }
+
+                if input.peek(Token![_]) {
+                    println!("{sp}found token b _");
+                    input.parse::<Token![_]>()?;
+                    dsl.parts.push(TokenPart::Plain("_".to_string()));
+                    continue;
                 }
 
                 let ignored = input.parse::<proc_macro2::TokenTree>()?;
@@ -168,21 +169,7 @@ fn parse_stream(
                         dsl = parse_stream(&input, dsl, TokenParserState::Modifiers, depth)?;
                         continue;
                     }
-
-                    if input.peek(Token![-]) {
-                        input.parse::<Token![-]>()?;                        
-                        words.push("-".to_string());
-                        println!("{sp}found token g -: {words:?}");
-                        continue;
-                    }
-
-                    if input.peek(Token![_]) {
-                        println!("{sp}found token g _");
-                        input.parse::<Token![_]>()?;
-                        dsl.parts.push(TokenPart::Plain("_".to_string()));
-                        continue;
-                    }
-
+                    
                     if input.peek(syn::Ident) {
                         let value = input
                             .parse::<Ident>()?
@@ -212,6 +199,20 @@ fn parse_stream(
                         words.push(value);
                         println!("{sp}acc lits g: {words:?}");
                         dsl.render_type = RenderType::StringLiteral;
+                        continue;
+                    }
+
+                    if input.peek(Token![-]) {
+                        input.parse::<Token![-]>()?;                        
+                        words.push("-".to_string());
+                        println!("{sp}found token g -: {words:?}");
+                        continue;
+                    }
+
+                    if input.peek(Token![_]) {
+                        println!("{sp}found token g _");
+                        input.parse::<Token![_]>()?;
+                        words.push("_".to_string());
                         continue;
                     }
 
