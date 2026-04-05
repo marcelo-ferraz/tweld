@@ -1,64 +1,7 @@
-# Tweld
+# Weld
 
-[![Crates.io](https://img.shields.io/crates/v/tweld.svg)](https://crates.io/crates/tweld)
-[![Docs.rs](https://docs.rs/tweld/badge.svg)](https://docs.rs/tweld)
-[![License](https://img.shields.io/crates/l/tweld.svg)](https://choosealicense.com/licenses/)
-[![CI](https://github.com/marcelo-ferraz/tweld/actions/workflows/ci.yml/badge.svg)](https://github.com/marcelo-ferraz/tweld/actions/workflows/ci.yml)
+`weld!` is the single entrypoint for the crate. It accepts any valid Rust item — structs, functions, trait implementations, constants, string literals — and processes any `@[...]` interpolators it finds within, emitting their result. The interpolator syntax is intentionally minimal: tokens go in, a chain of `|` separates modifiers and transforms the previous result in the chain, and an identifier or string value comes out. 
 
-> *You can read it as tiny-weld, token-weld, or just tweld. The important thing is that it compiles.*
- 
-Tweld is a procedural macro toolkit and naming DSL for Rust. It lets you dynamically generate, modify, and compose identifiers directly in your source code using a clean `@[]` syntax — because sometimes the identifier you need doesn't quite exist yet, and writing a full proc-macro just to rename a function feels like bringing a freight train to post a letter.
-One can only hope the syntax is clean and intuitive enough.
-
-```rust
-weld!("## @[(the idea | title)]");
-```
- 
-The name comes from the idea of fusing tokens together. It started as a tool for writing macros for macros (which sounds recursive, because it is), and then grew somewhat beyond its original remit.
-
----
- 
-## Installation
- 
-Add it to your `Cargo.toml`:
- 
-```toml
-[dependencies]
-tweld = "0.1.0-rc.2"  # check crates.io for the latest
-```
- 
-Or, if you prefer:
- 
-```sh
-cargo add tweld
-```
- 
-Then bring it into scope:
- 
-```rust
-use tweld::weld;
-```
- 
----
-
-## The Core Idea
- 
-Everything in tweld revolves around one macro — `weld!` — and one syntax: `@[...]`, I fondly call it the interpolator, but the final name is pending.
- 
-Anything inside `@[...]` gets transformed, *welded* and fused (not literally — the implications would be unwieldy), and emitted as either an identifier or the content of a string literal. A chain of modifiers separated by `|` transforms the value step by step.
- 
-```rust
-weld!(
-    fn @[(get user profiles) | snek]() { ... }
-    // renders: fn get_user_profiles() { ... }
-);
-```
- 
-The modifiers don't need to produce something sensible at every intermediate step. They just need to produce something valid by the end. What happens in between is your own affair.
- 
----
-
- 
 ## Groups
  
 Inside `@[...]`, you can organise tokens into named groups and apply modifiers to them. There are two kinds.
@@ -67,7 +10,7 @@ Inside `@[...]`, you can organise tokens into named groups and apply modifiers t
  
 Tokens inside `()` are concatenated into a single value before any modifiers are applied. Think of it as: *everything in here is one thing*.
  
-```rust
+```rust,ignore
 weld!(
     const @[(super duper) | snek] = "";
     // renders: const super_duper = "";
@@ -78,7 +21,7 @@ weld!(
  
 Tokens inside `[]` are kept as a *collection*. Modifiers that work on individual values (casing, replace, trim, etc.) are applied to each item independently. Modifiers that work on structure (reverse, join, slice, etc.) operate on the collection as a whole.
  
-```rust
+```rust,ignore
 weld!(
     const @[([er sup] | reverse) _duper] = "";
     // renders: const super_duper = "";
@@ -88,7 +31,7 @@ weld!(
  
 Groups can be nested, and modifiers chain naturally across levels:
  
-```rust
+```rust,ignore
 weld!(
     struct @[([([er sup] | reverse) -duper] | camel) | pascal] {
         pub id: i64,
@@ -98,14 +41,12 @@ weld!(
 ```
  
 This is a contrived example — but the point is that you can compose arbitrarily, and as long as the final result is a valid Rust identifier, the compiler will be perfectly happy and won't ask any questions.
- 
 
 
 ## Raw Indentifiers
 
 Raw identifiers are handled automatically. If a token is a reserved word, you can pass it in using Rust's `r#` prefix — `r#loop`, `r#type`, and so on — and `weld!` will accept it without complaint. In the other direction, if the result of a modifier chain happens to land on a reserved word, the `r#` prefix will be added for you. If you passed a raw identifier in but the transformations produced something that no longer needs it, the prefix is quietly removed. You shouldn't have to think about it either way.
 
- 
  
 ## Modifiers
  
@@ -134,7 +75,7 @@ Casing modifiers use the [`heck`](https://docs.rs/heck) crate under the hood.
  
 `singular` strips a trailing `s`; `plural` adds one. No linguistic analysis is happening here — it's string manipulation wearing a vocabulary waistcoat.
  
-```rust
+```rust,ignore
 weld!(
     pub struct @[Users | singular | pascal] { pub id: i64 }
     // renders: pub struct User { ... }
@@ -147,8 +88,8 @@ weld!(
  
 Replaces all non-overlapping occurrences of a pattern with a replacement string.
  
-```rust
-weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "";);
+```rust,ignore
+weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "");
 // renders: const a_small_ident = "";
 ```
  
@@ -158,8 +99,8 @@ weld!(const @[(a long ident) | replace{"long", "small"} | snek] = "";);
  
 Returns the substring from `start` up to (not including) `end`. Both are optional. Indexes are zero-based.
  
-```rust
-weld!(const @[(a long identifier) | substr{, 9} | snek] = "";);
+```rust,ignore
+weld!(const @[(a long identifier) | substr{, 9} | snek] = "");
 // renders: const a_long_ident = "";
 ```
  
@@ -170,8 +111,8 @@ weld!(const @[(a long identifier) | substr{, 9} | snek] = "";);
 On a single value: reverses the characters.
 On a list group: reverses the order of items (not the characters within them).
  
-```rust
-weld!(const @[(no lemon no melon) | reverse | snek] = "";);
+```rust,ignore
+weld!(const @[(no lemon no melon) | reverse | snek] = "");
 // renders: const nolem_on_nomel_on = "";
 ```
  
@@ -181,7 +122,7 @@ weld!(const @[(no lemon no melon) | reverse | snek] = "";);
  
 Creates a new value by repeating the current value `n` times.
  
-```rust
+```rust,ignore
 weld!(const rawhide = @[",rolling' " | timess{3} | substr{1}]);
 // renders: const rawhide = "rolling' ,rolling' ,rolling' ";
 ```
@@ -198,7 +139,7 @@ The behaviour differs between group types:
  
 **Splitting by character or string:**
  
-```rust
+```rust,ignore
 // Single-value group: splits on '-', lowercases each part, joins with ", "
 weld!(const val = @[(("get-one" two - "3-4" Struct) | split{'-'} | lower | join{", "})]);
 // renders: const val = "get, onetwo, 3, 4struct";
@@ -212,7 +153,7 @@ weld!(const val = @[["get-one" two - "3-4" Struct] | split{"-"} | lower | join{"
  
 Splits the value every N characters. If the index is larger than the value's length, the argument is ignored.
  
-```rust
+```rust,ignore
 weld!(const val = @[(("get-" Test - Struct) | split{6} | lower | join{"_"})]);
 // renders: const val = "get-te_st-struct";
  
@@ -226,7 +167,7 @@ weld!(const val = @[["get-" Test - Struct] | split{2} | lower | join{","}]);
  
 Flattens a list into a single value, with an optional separator between items. If the current value is already a single value, it passes through unchanged.
  
-```rust
+```rust,ignore
 weld!(const val = @[["get-" Test - Struct] | join{","}]);
 // renders: const val = "get-,Test,-,Struct";
 ```
@@ -237,7 +178,7 @@ weld!(const val = @[["get-" Test - Struct] | join{","}]);
  
 Pads from the **start** of the value until it reaches `length` characters. The pad string is repeated and/or truncated as needed. If the value is already at or beyond `length`, it's returned unchanged.
  
-```rust
+```rust,ignore
 weld!(const val = @[("get-" Test-Struct) | padleft{20, "-"}]);
 // renders: const val = "-----get-Test-Struct"
 //          (total length 20, padded with '-' on the left)
@@ -249,7 +190,7 @@ weld!(const val = @[("get-" Test-Struct) | padleft{20, "-"}]);
  
 Same as `padstart`, but pads from the **end**.
  
-```rust
+```rust,ignore
 weld!(const val = @[("get-" Test-Struct) | padright{20, "-"}]);
 // renders: const val = "get-Test-Struct-----"
 ```
@@ -260,7 +201,7 @@ weld!(const val = @[("get-" Test-Struct) | padright{20, "-"}]);
  
 Extracts a portion of the string. Both positions are optional and support **negative indexing** (counting backwards from the end). If `start` is greater than `end`, returns an empty value.
  
-```rust
+```rust,ignore
 weld!(const val = @["get_" Test_Struct | slice{5}]);
 // renders: const val = "get_Struct"
  
@@ -289,7 +230,7 @@ The most involved modifier. Removes a range from the value, optionally replaces 
  
 **Basic removal:**
  
-```rust
+```rust,ignore
 // Remove from position 1 onwards → return the result
 weld!(const val = @[("get_" Test_Struct) | splice{into, 1}]);
 // renders: const val = "g"
@@ -301,7 +242,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{out, 1}]);
  
 **Removing a range:**
  
-```rust
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{into, 1, 4}]);
 // renders: const val = "gTest_Struct"
  
@@ -311,7 +252,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{out, 1, 4}]);
  
 **Replacing a range:**
  
-```rust
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{value, 1, 4, "ot_"}]);
 // renders: const val = "got_Test_Struct"
  
@@ -330,7 +271,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{val, , , "new"}]);
  
 **Negative positions** count from the end:
  
-```rust
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice{into, -4}]);
 // renders: const val = "get_Test_St"
  
@@ -340,7 +281,7 @@ weld!(const val = @[("get_" Test_Struct) | splice{into, -4, -1, "<->"}]);
  
 **Aliases:** `splice_into` and `splice_out` are shorthand for `splice{into, ...}` and `splice{out, ...}`:
  
-```rust
+```rust,ignore
 weld!(const val = @[("get_" Test_Struct) | splice_out{-4, -1}]);
 // renders: const val = "ruc"
  
@@ -354,7 +295,7 @@ weld!(const val = @[("get_" Test_Struct) | splice_into{-4, -1, "<->"}]);
  
 Here's what the modifier chain looks like when used for something you might actually want to do:
  
-```rust
+```rust,ignore
 use tweld::weld;
  
 weld! {
