@@ -4,7 +4,7 @@ use syn::{Ident, Lit, LitChar, LitInt, LitStr, Token};
 
 use crate::models::{Output, Modifier};
 
-fn parse_lit<T>(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<T>
+fn parse_lit_int<T>(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<T>
 where T: FromStr, 
     <T as FromStr>::Err: std::fmt::Display {
     let result = args
@@ -50,20 +50,14 @@ fn parse_splice(input: &syn::parse::ParseBuffer<'_>, output_set: Option<Output>)
         },        
     }
        
-    start = args
-        .parse::<LitInt>()
-        .and_then(|val| val.base10_parse::<i32>())
-        .ok();
+    start = parse_lit_int(&args).ok();
 
     if !args.peek(Token![,]) { 
         return Ok(Modifier::Splice(output_type, start, end, insert));
     }
     
     args.parse::<Token![,]>()?;
-    end = args
-        .parse::<LitInt>()
-        .and_then(|val| val.base10_parse::<i32>())
-        .ok();
+    end = parse_lit_int(&args).ok();
     
     if !args.peek(Token![,]) { 
         return Ok(Modifier::Splice(output_type, start, end, insert));
@@ -88,7 +82,7 @@ fn parse_lit_str_char(args: &syn::parse::ParseBuffer<'_>) -> syn::Result<String>
 fn parse_pad_args(input: &syn::parse::ParseBuffer<'_>) -> Result<(usize, String), syn::Error> {
     let args;
     syn::braced!(args in input);
-    let size = parse_lit(&args)?;
+    let size = parse_lit_int(&args)?;
     args.parse::<Token![,]>()?;
     let pad = parse_lit_str_char(&args)?;
     Ok((size, pad))
@@ -129,16 +123,25 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 let args;
                 syn::braced!(args in input);
                 let from = parse_lit_str_char(&args)?;                
-                args.parse::<Token![,]>()?;
-                let to = parse_lit_str_char(&args)?;
+                let mut to = "".to_string();
+                if let Ok(_) = args.parse::<Token![,]>() {
+                    to = parse_lit_str_char(&args)?;
+                }
                 modifiers.push(Modifier::Replace(from, to));
             }
             "substr" | "substring" => {
+                if !input.peek(syn::token::Brace) {
+                    modifiers.push(Modifier::Substr(None, None));
+                    continue;
+                }
+
                 let args;
                 syn::braced!(args in input);
-                let from = parse_lit(&args).ok();
-                args.parse::<Token![,]>()?;
-                let to = parse_lit(&args).ok();
+                let from = parse_lit_int(&args).ok();
+                let mut to = None;
+                if let Ok(_) = args.parse::<Token![,]>() {
+                    to = parse_lit_int(&args).ok();
+                }
 
                 modifiers.push(Modifier::Substr(from, to));
             }
@@ -146,29 +149,16 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
             "repeat" | "rep" | "times" => {
                 let args;
                 syn::braced!(args in input); 
-                let times = args
-                    .parse::<LitInt>()
-                    .and_then(|val| val.base10_parse::<usize>())?;
+                let times = parse_lit_int(&args)?;
 
                 modifiers.push(Modifier::Repeat(times));
             },
             "splitat" => {
                 let args;
                 syn::braced!(args in input);
-                let mid = parse_lit(&args)?;
+                let mid = parse_lit_int(&args)?;
                 modifiers.push(Modifier::SplitAt(mid));
                 
-            },
-            "each" => {
-                if !input.peek(syn::token::Brace) {
-                    modifiers.push(Modifier::Split(" ".to_owned()));
-                    continue;
-                }
-
-                let args;
-                syn::braced!(args in input);
-                let sep = parse_lit_str_char(&args)?;
-                modifiers.push(Modifier::Split(sep.to_owned()));
             },
             "split" => {
                 let args;
@@ -194,14 +184,16 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
                 }                                                
             },
             "join" => {
-                if input.peek(Token![|]) {
+                println!("join");
+                if !input.peek(syn::token::Brace) {
+                    println!("peeked");
                     modifiers.push(Modifier::Join("".to_string())); 
                     continue;   
                 }
 
                 let args;
                 syn::braced!(args in input);
-                let sep = parse_lit_str_char(&args)?;                        
+                let sep = parse_lit_str_char(&args).unwrap_or_default();                        
                 modifiers.push(Modifier::Join(sep));
             },
             "padstart" | "padleft" | "padl" => {
@@ -217,11 +209,11 @@ pub(crate) fn parse_modifiers(input: &syn::parse::ParseBuffer<'_>) -> syn::Resul
             "slice" => {
                 let args;
                 syn::braced!(args in input);
-                let start = parse_lit(&args).ok();
+                let start = parse_lit_int(&args).ok();
 
                 let mut end = None;
                 if let Ok(_) = args.parse::<Token![,]>() {
-                    end = parse_lit(&args).ok();
+                    end = parse_lit_int(&args).ok();
                 }
 
                 modifiers.push(Modifier::Slice(start, end));
