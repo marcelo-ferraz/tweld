@@ -69,7 +69,7 @@ Tokens inside `()` are concatenated into a single value before any modifiers are
  
 ```rust
 weld!(
-    const @[(super duper) | snek] = "";
+    const @[(_super Duper) | snek] = "";
     // renders: const super_duper = "";
 );
 ```
@@ -182,7 +182,7 @@ weld!(const @[(no lemon no melon) | reverse | snek] = "";);
 Creates a new value by repeating the current value `n` times.
  
 ```rust
-weld!(const rawhide = @[",rolling' " | timess{3} | substr{1}]);
+weld!(const rawhide = @[",rolling' " | times{3} | substr{1}]);
 // renders: const rawhide = "rolling' ,rolling' ,rolling' ";
 ```
  
@@ -276,7 +276,7 @@ weld!(const val = @["get_" Test_Struct | slice{-4, -6}]);
  
 ---
  
-### `splice{mode, start?, end?, replacement?}`
+### `splice{mode?, start?, end?, replacement?}`
  
 The most involved modifier. Removes a range from the value, optionally replaces it with new content, and returns either the modified value or the removed portion — depending on the mode.
  
@@ -378,7 +378,7 @@ The modifiers don't need to be tidy on the inside. They just need to produce som
  
 ## Status
  
-Tweld is currently in **alpha (RC2)**. The feature set for `1.0` is complete and testing is still an ongoing endeavor. The API may still shift before stabilisation.
+Tweld is currently in **alpha (RC3)**. The feature set for `1.0` is complete and testing is still an ongoing endeavor, some will say is a mess, I call it home. The API may still shift before stabilisation.
  
 Bug reports, feature requests, and strong opinions about identifier naming are all welcome.
  
