@@ -69,7 +69,7 @@ Tokens inside `()` are concatenated into a single value before any modifiers are
  
 ```rust
 weld!(
-    const @[(_super Duper) | snek] = "";
+    const @[(_super Duper) | snek | substr{1,}] = "";
     // renders: const super_duper = "";
 );
 ```
