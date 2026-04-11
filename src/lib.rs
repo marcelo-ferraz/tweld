@@ -20,6 +20,7 @@ mod builder;
 mod models;
 mod parser;
 mod scanner;
+#[cfg(test)]
 mod tests;
 
 extern crate proc_macro;
