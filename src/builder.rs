@@ -215,13 +215,12 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
 
                     values[i] = values[i].get(start..end).unwrap_or_default().to_string();
                 }
-                Modifier::Splice(output, start, delete_end, replace_with) => {
-                    let len = values[i].len() as i32;
-
-                    let start = parse_pos(len, start.unwrap_or(0));
-                    let end = parse_pos(len, delete_end.unwrap_or(len));
-
+                Modifier::Splice(output, start, end, replace_with) => {
                     if list_mode {
+                        let len = values.len() as i32;
+                        let start = parse_pos(len, start.unwrap_or(0));
+                        let end = parse_pos(len, end.unwrap_or(len));
+
                         if start > end {
                             values = vec![];
                         } else {
@@ -233,6 +232,10 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                         }
                         break;
                     }
+                    
+                    let len = values[i].len() as i32;
+                    let start = parse_pos(len, start.unwrap_or(0));
+                    let end = parse_pos(len, end.unwrap_or(len));
 
                     let replace_with = replace_with.clone().unwrap_or(String::new());
 

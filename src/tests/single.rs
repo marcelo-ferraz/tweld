@@ -438,3 +438,158 @@ fn should_apply_splice_no_output() {
 
     assert_transformations(arguments);
 }
+
+#[test]
+fn should_apply_split_single() {
+    let arguments = vec![
+        (
+            quote! { @[(get_ Test_Struct) | split{"_"} | title] },
+            "GetTestStruct",
+        ),
+        (
+            quote! { @[(get - Test-Struct) | split{"-"} | lower | join{"_"} ] },
+            "get_test_struct",
+        ),
+        (
+            quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{'_'}) -by-id] },
+            "\"get_test_struct-by-id\"",
+        ),
+        (
+            quote! { @[(("get-one" two - "3-4" Struct) | split{"-"} | lower | join{'_'}) -by-id] },
+            "\"get_onetwo_3_4struct-by-id\"",
+        ),        
+        (
+            quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{"_"}) -by-id] },
+            "\"get_test_struct-by-id\"",
+        ),
+        (
+            quote! { @[(("get-" Test - Struct) | split{6} | lower | join{"_"})] },
+            "\"get-te_st-struct\"",
+        ),        
+    ];
+
+    assert_transformations(arguments);
+}
+
+
+#[test]
+fn should_apply_substr_end_only() {
+    let arguments = vec![
+        (
+            quote! { @[( a _ long identifier) | substr{, 9}] },
+            "a_longide",
+        ),
+        (
+            quote! { @[( a _ long identifier) | substring{, 9}] },
+            "a_longide",
+        ),
+        (
+            quote! { @[("a long identifier") | substr{, 9}] },
+            "\"a long id\"",
+        ),
+        //              01234567890123456789
+        //              0         1
+    ];
+    assert_transformations(arguments);
+}
+
+#[test]
+fn should_apply_substr_start_only() {
+    let arguments = vec![
+        (
+            quote! { @[( a long identifier) | substr{3}] },
+            "ngidentifier",
+        ),
+        (
+            quote! { @[( a long identifier) | substring{3}] },
+            "ngidentifier",
+        ),
+        (
+            quote! { @[("a long identifier") | substr{4}] },
+            "\"ng identifier\"",
+        ),
+        //               01234567890123456789
+        //               0         1
+    ];
+    assert_transformations(arguments);
+}
+
+#[test]
+fn should_apply_substr_start_and_end() {
+    let arguments = vec![
+        (quote! { @[( a long identifier) | substr{1, 7}] }, "longid"),
+        (
+            quote! { @[( a long identifier) | substring{1, 7}] },
+            "longid",
+        ),
+        (
+            quote! { @[("a long identifier") | substr{2, 9}] },
+            "\"long id\"",
+        ),
+        //               01234567890123456789
+        //               0         1
+    ];
+    assert_transformations(arguments);
+}
+
+#[test]
+fn should_apply_substr_no_args() {
+    // no args returns the full value unchanged
+    let arguments = vec![
+        quote! { @[(a _ long identifier) | substr{}] },
+        quote! { @[(a _ long identifier) | substring{}] },
+    ];
+    assert_transformations_same_output(arguments, "a_longidentifier");
+}
+
+#[test]
+fn should_apply_substr_chained() {
+    let arguments = vec![
+        (
+            quote! { @[(a Long identifier) | substr{, 9} | snek] },
+            "a_longiden",
+        ),
+        (
+            quote! { @[(a long identifier) | substr{2, 8} | upper] },
+            "ONGIDE",
+        ),
+    ];
+    assert_transformations(arguments);
+}
+
+
+#[test]
+fn should_apply_splice_default_mode_single() {
+    // omitting the mode keyword defaults to into behaviour
+    let arguments = vec![
+        (quote! { @[(get_ Test_Struct)| splice{, 1}] }, "g"),
+        (
+            quote! { @[(get_ Test_Struct)| splice{, 1, 4}] },
+            "gTest_Struct",
+        ),
+        (
+            quote! { @[(get_ Test_Struct)| splice{, 1, 4, "ot_"}] },
+            "got_Test_Struct",
+        ),
+        (
+            quote! { @[(get_ Test_Struct)| splice{,, 4, "got_"}] },
+            "got_Test_Struct",
+        ),
+        (
+            quote! { @[(get_ Test_Struct)| splice{, 1,, "ot_"}] },
+            "got_",
+        ),
+        (quote! { @[(get_ Test_Struct)| splice{,,, "new"}] }, "new"),
+        // negative indexes
+        (quote! { @[(get_ Test_Struct)| splice{, -5}] }, "get_Test_S"),
+        (
+            quote! { @[(get_ Test_Struct)| splice{, -5, -1}] },
+            "get_Test_St",
+        ),
+        (
+            quote! { @[(get_ Test_Struct)| splice{, -5, -1, "ot_"}] },
+            "get_Test_Sot_t",
+        ),
+    ];
+    assert_transformations(arguments);
+}
