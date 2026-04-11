@@ -48,16 +48,17 @@ fn should_apply_reverse_list() {
 #[test]
 fn should_apply_slice_list() {
     let arguments = vec![
-        (quote! { @[[get_ Test_Struct] | slice{-4}] }, "get_ruct"),
-        (quote! { @[(get_ Test_Struct) | slice{-4}] }, "ruct"),
-        (quote! { @[get_ Test_Struct | slice{5}] }, "get_Struct"),
-        (quote! { @[(get_ Test_Struct)| slice{,8}] }, "get_Test"),
+        (quote! { @[[get_ Test_Struct] | slice{-1}] }, "Test_Struct"),
+        (quote! { @[[get_ Test_Struct] | slice{1}] }, "Test_Struct"),        
+        (quote! { @[[get_ Test_Struct]| slice{,1}] }, "get_"),
         (
-            quote! { @[(_get_ Test_Struct) | slice{1, -4}] },
-            "get_Test_St",
+            quote! { @[[_get_ Test _ Struct] | slice{1, -2}] },
+            "Test",
         ),
-        (quote! { @[(_get_ Test_Struct) | slice{-6, -4}] }, "St"),
-        (quote! { @[get_ Test_Struct| slice{-4,-6}] }, "get_"),
+        (
+            quote! { @[[_get_ Test _ Struct] | slice{1, 3}] },
+            "Test_",
+        ),
     ];
 
     assert_transformations(arguments);

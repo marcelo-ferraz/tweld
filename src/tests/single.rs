@@ -108,7 +108,7 @@ fn should_apply_repeat_single() {
     let arguments = vec![
         (
             quote! { @[(get_ Test_Struct) | repeat{2}] },
-            "get_Test_StructTest_Struct",
+            "get_Test_Structget_Test_Struct",
         ),
         (
             quote! { @["get-" (Test-Struct) | rep{2}] },
