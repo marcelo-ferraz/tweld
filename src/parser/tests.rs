@@ -1,5 +1,7 @@
-
-use crate::{models::{Modifier, Output}, parser::modifiers::parse_modifiers};
+use crate::{
+    models::{Modifier, Output},
+    parser::modifiers::parse_modifiers,
+};
 use syn::parse::Parser;
 
 #[macro_export]
@@ -319,28 +321,26 @@ define_tests_for_syntax![
 #[test]
 fn test_substr_values() {
     let arguments = vec![
-        ("|substr{,}",  (None, None)),
+        ("|substr{,}", (None, None)),
         ("|substr{1,}", (Some(1), None)),
         ("|substr{,2}", (None, Some(2))),
-        ("|substr{1,2}",(Some(1), Some(2))),
+        ("|substr{1,2}", (Some(1), Some(2))),
         ("|substring{,}", (None, None)),
-        ("|substring{1,}",(Some(1), None)),
-        ("|substring{,2}",(None, Some(2))),
-        ("|substring{1,2}",(Some(1), Some(2))),
+        ("|substring{1,}", (Some(1), None)),
+        ("|substring{,2}", (None, Some(2))),
+        ("|substring{1,2}", (Some(1), Some(2))),
     ];
 
     arguments.iter().for_each(|(input, argument)| {
         let parsed = Parser::parse_str(parse_modifiers, input).unwrap();
-        let result = parsed
-            .get(0)
-            .unwrap();
+        let result = parsed.get(0).unwrap();
 
         let Modifier::Substr(start, end) = result else {
             panic!("Invalid result");
         };
 
         let (exp_start, exp_end) = argument;
-        
+
         assert_eq!(exp_start, start);
         assert_eq!(exp_end, end);
     });
@@ -349,67 +349,109 @@ fn test_substr_values() {
 #[test]
 fn test_slice_values() {
     let arguments = vec![
-        ("|slice{}",  (None, None)),
-        ("|slice{,}",  (None, None)),
+        ("|slice{}", (None, None)),
+        ("|slice{,}", (None, None)),
         ("|slice{1,}", (Some(1), None)),
         ("|slice{,2}", (None, Some(2))),
-        ("|slice{1,2}",(Some(1), Some(2))),
+        ("|slice{1,2}", (Some(1), Some(2))),
     ];
 
     arguments.iter().for_each(|(input, argument)| {
         let parsed = Parser::parse_str(parse_modifiers, input).unwrap();
-        let result = parsed
-            .get(0)
-            .unwrap();
+        let result = parsed.get(0).unwrap();
 
         let Modifier::Slice(start, end) = result else {
             panic!("Invalid result");
         };
 
         let (exp_start, exp_end) = argument;
-        
+
         assert_eq!(exp_start, start);
         assert_eq!(exp_end, end);
     });
 }
 
-
 #[test]
 fn test_splice_values() {
     let arguments = vec![
-        ("|splice{,,,}",(Output::Value, None, None, None)),
-        ("|splice{val,,,}",(Output::Value, None, None, None)),
-        ("|splice{val,1,,}",(Output::Value, Some(1), None, None)),
-        ("|splice{val,,1,}",(Output::Value, None, Some(1), None)),
-        ("|splice{val,1,1,}",(Output::Value, Some(1), Some(1), None)),
-        ("|splice{val,,,'a'}",(Output::Value, None, None, Some("a"))),
-        ("|splice{val,,,\"a\"}",(Output::Value, None, None, Some("a"))),
-        ("|splice{val,1,,'a'}",(Output::Value, Some(1), None, Some("a"))),
-        ("|splice{val,1,,\"a\"}",(Output::Value, Some(1), None, Some("a"))),
-        ("|splice{val,,1,'a'}",(Output::Value, None, Some(1), Some("a"))),
-        ("|splice{val,,1,\"a\"}",(Output::Value, None, Some(1), Some("a"))),
-        ("|splice{val,1,1,'a'}",(Output::Value, Some(1), Some(1), Some("a"))),
-        ("|splice{val,1,1,\"a\"}", (Output::Value, Some(1), Some(1), Some("a"))),
-
-        ("|splice{out,,,}",(Output::Removed, None, None, None)),
-        ("|splice{out,1,,}",(Output::Removed, Some(1), None, None)),
-        ("|splice{out,,1,}",(Output::Removed, None, Some(1), None)),
-        ("|splice{out,1,1,}",(Output::Removed, Some(1), Some(1), None)),
-        ("|splice{out,,,'a'}",(Output::Removed, None, None, Some("a"))),
-        ("|splice{out,,,\"a\"}",(Output::Removed, None, None, Some("a"))),
-        ("|splice{out,1,,'a'}",(Output::Removed, Some(1), None, Some("a"))),
-        ("|splice{out,1,,\"a\"}",(Output::Removed, Some(1), None, Some("a"))),
-        ("|splice{out,,1,'a'}",(Output::Removed, None, Some(1), Some("a"))),
-        ("|splice{out,,1,\"a\"}",(Output::Removed, None, Some(1), Some("a"))),
-        ("|splice{out,1,1,'a'}",(Output::Removed, Some(1), Some(1), Some("a"))),
-        ("|splice{out,1,1,\"a\"}", (Output::Removed, Some(1), Some(1), Some("a")))
+        ("|splice{,,,}", (Output::Value, None, None, None)),
+        ("|splice{val,,,}", (Output::Value, None, None, None)),
+        ("|splice{val,1,,}", (Output::Value, Some(1), None, None)),
+        ("|splice{val,,1,}", (Output::Value, None, Some(1), None)),
+        ("|splice{val,1,1,}", (Output::Value, Some(1), Some(1), None)),
+        ("|splice{val,,,'a'}", (Output::Value, None, None, Some("a"))),
+        (
+            "|splice{val,,,\"a\"}",
+            (Output::Value, None, None, Some("a")),
+        ),
+        (
+            "|splice{val,1,,'a'}",
+            (Output::Value, Some(1), None, Some("a")),
+        ),
+        (
+            "|splice{val,1,,\"a\"}",
+            (Output::Value, Some(1), None, Some("a")),
+        ),
+        (
+            "|splice{val,,1,'a'}",
+            (Output::Value, None, Some(1), Some("a")),
+        ),
+        (
+            "|splice{val,,1,\"a\"}",
+            (Output::Value, None, Some(1), Some("a")),
+        ),
+        (
+            "|splice{val,1,1,'a'}",
+            (Output::Value, Some(1), Some(1), Some("a")),
+        ),
+        (
+            "|splice{val,1,1,\"a\"}",
+            (Output::Value, Some(1), Some(1), Some("a")),
+        ),
+        ("|splice{out,,,}", (Output::Removed, None, None, None)),
+        ("|splice{out,1,,}", (Output::Removed, Some(1), None, None)),
+        ("|splice{out,,1,}", (Output::Removed, None, Some(1), None)),
+        (
+            "|splice{out,1,1,}",
+            (Output::Removed, Some(1), Some(1), None),
+        ),
+        (
+            "|splice{out,,,'a'}",
+            (Output::Removed, None, None, Some("a")),
+        ),
+        (
+            "|splice{out,,,\"a\"}",
+            (Output::Removed, None, None, Some("a")),
+        ),
+        (
+            "|splice{out,1,,'a'}",
+            (Output::Removed, Some(1), None, Some("a")),
+        ),
+        (
+            "|splice{out,1,,\"a\"}",
+            (Output::Removed, Some(1), None, Some("a")),
+        ),
+        (
+            "|splice{out,,1,'a'}",
+            (Output::Removed, None, Some(1), Some("a")),
+        ),
+        (
+            "|splice{out,,1,\"a\"}",
+            (Output::Removed, None, Some(1), Some("a")),
+        ),
+        (
+            "|splice{out,1,1,'a'}",
+            (Output::Removed, Some(1), Some(1), Some("a")),
+        ),
+        (
+            "|splice{out,1,1,\"a\"}",
+            (Output::Removed, Some(1), Some(1), Some("a")),
+        ),
     ];
 
     arguments.iter().for_each(|(input, argument)| {
         let parsed = Parser::parse_str(parse_modifiers, input).unwrap();
-        let result = parsed
-            .get(0)
-            .unwrap();
+        let result = parsed.get(0).unwrap();
 
         let Modifier::Splice(output, start, end, replace) = result else {
             panic!("Invalid result");
