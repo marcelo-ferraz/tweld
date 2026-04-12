@@ -32,16 +32,16 @@ pub enum Output {
 }
 
 #[derive(Debug, Clone)]
-pub enum TokenPart {
+pub enum WeldToken {
     Plain(String),
-    ConcatGroup(Vec<TokenPart>),
-    ListGroup(Vec<TokenPart>),
-    Modified(Box<TokenPart>, Vec<Modifier>),
+    ConcatGroup(Vec<WeldToken>),
+    ListGroup(Vec<WeldToken>),
+    Modify(Box<WeldToken>, Vec<Modifier>),
 }
 
 #[derive(Debug)]
 pub enum TokenParserState {
-    InsideBrackets,
+    Root,
     InsideGroup(bool),
     Modifiers,
 }

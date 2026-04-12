@@ -3,9 +3,9 @@ use heck::{
     ToTitleCase, ToTrainCase,
 };
 
-use crate::models::{Modifier, Output, TokenPart};
+use crate::models::{Modifier, Output, WeldToken};
 
-pub fn build_string(parts: Vec<TokenPart>) -> String {
+pub fn build_string(parts: Vec<WeldToken>) -> String {
     let mut result = String::new();
     for part in parts {
         let partial = build_from_part(part);
@@ -15,20 +15,20 @@ pub fn build_string(parts: Vec<TokenPart>) -> String {
     result.replace("r#", "")
 }
 
-fn build_from_part(part: TokenPart) -> String {
+fn build_from_part(part: WeldToken) -> String {
     match part {
-        TokenPart::Plain(value) => value.clone(),
-        TokenPart::ConcatGroup(grouped_parts) => grouped_parts
+        WeldToken::Plain(value) => value.clone(),
+        WeldToken::ConcatGroup(grouped_parts) => grouped_parts
             .iter()
             .map(|sub_part| build_from_part(sub_part.clone()))
             .collect::<String>(),
-        TokenPart::ListGroup(grouped_parts) => grouped_parts
+        WeldToken::ListGroup(grouped_parts) => grouped_parts
             .iter()
             .map(|sub_part| build_from_part(sub_part.clone()))
             .collect::<String>(),
-        TokenPart::Modified(target, modifiers) => match *target {
-            TokenPart::Plain(value) => modify_single(value, &modifiers),
-            TokenPart::ListGroup(items) => {
+        WeldToken::Modify(target, modifiers) => match *target {
+            WeldToken::Plain(value) => modify_single(value, &modifiers),
+            WeldToken::ListGroup(items) => {
                 let value = items
                     .iter()
                     .map(|sub_part| build_from_part(sub_part.clone()))
@@ -36,7 +36,7 @@ fn build_from_part(part: TokenPart) -> String {
 
                 modify_list(value, &modifiers)
             }
-            TokenPart::ConcatGroup(grouped_parts) => {
+            WeldToken::ConcatGroup(grouped_parts) => {
                 let value = grouped_parts
                     .iter()
                     .map(|sub_part| build_from_part(sub_part.clone()))
@@ -44,7 +44,7 @@ fn build_from_part(part: TokenPart) -> String {
 
                 modify_single(value, &modifiers)
             }
-            TokenPart::Modified(token_part, nested_modifiers) => {
+            WeldToken::Modify(token_part, nested_modifiers) => {
                 let nested_result = modify_single(build_from_part(*token_part), &nested_modifiers);
 
                 modify_single(nested_result, &modifiers)
