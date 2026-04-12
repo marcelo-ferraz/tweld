@@ -1,6 +1,9 @@
 use quote::quote;
 
-use crate::{scanner::IDENT_EMPTY_MSG, tests::helpers::{assert_failure, assert_transformations}};
+use crate::{
+    scanner::IDENT_EMPTY_MSG,
+    tests::helpers::{assert_failure, assert_transformations},
+};
 
 #[test]
 fn should_apply_singular_on_list_group() {
@@ -52,7 +55,6 @@ fn should_apply_repeat_list() {
     assert_transformations(arguments);
 }
 
-
 #[test]
 fn should_apply_reverse_list() {
     let arguments = vec![
@@ -78,16 +80,10 @@ fn should_apply_reverse_list() {
 fn should_apply_slice_list() {
     let arguments = vec![
         (quote! { @[[get_ Test_Struct] | slice{-1}] }, "Test_Struct"),
-        (quote! { @[[get_ Test_Struct] | slice{1}] }, "Test_Struct"),        
+        (quote! { @[[get_ Test_Struct] | slice{1}] }, "Test_Struct"),
         (quote! { @[[get_ Test_Struct]| slice{,1}] }, "get_"),
-        (
-            quote! { @[[_get_ Test _ Struct] | slice{1, -2}] },
-            "Test",
-        ),
-        (
-            quote! { @[[_get_ Test _ Struct] | slice{1, 3}] },
-            "Test_",
-        ),
+        (quote! { @[[_get_ Test _ Struct] | slice{1, -2}] }, "Test"),
+        (quote! { @[[_get_ Test _ Struct] | slice{1, 3}] }, "Test_"),
     ];
 
     assert_transformations(arguments);
@@ -95,9 +91,12 @@ fn should_apply_slice_list() {
 
 #[test]
 fn should_apply_slice_list_fail() {
-    let arguments = vec![        
-        (quote! { @[[get_ Test_Struct] | slice{2}] }, IDENT_EMPTY_MSG),               
-        (quote! { @[[get_ Test_Struct] | slice{-4}] }, IDENT_EMPTY_MSG),               
+    let arguments = vec![
+        (quote! { @[[get_ Test_Struct] | slice{2}] }, IDENT_EMPTY_MSG),
+        (
+            quote! { @[[get_ Test_Struct] | slice{-4}] },
+            IDENT_EMPTY_MSG,
+        ),
     ];
 
     assert_failure(arguments);
@@ -270,16 +269,12 @@ fn should_apply_join_without_separator() {
     assert_transformations(arguments);
 }
 
-
 #[test]
 fn should_apply_splice_default_mode_list() {
     // omitting the mode keyword defaults to into behaviour
     let arguments = vec![
         (quote! { @[[get_ Test_Struct]| splice{, 1}] }, "get_"),
-        (
-            quote! { @[[get_ Test_Struct]| splice{, 1, 2}] },
-            "get_",
-        ),
+        (quote! { @[[get_ Test_Struct]| splice{, 1, 2}] }, "get_"),
         (
             quote! { @[[get_ Test_Struct]| splice{, 1, 4, "ot_"}] },
             "get_ot_",

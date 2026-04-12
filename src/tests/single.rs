@@ -1,4 +1,3 @@
-
 use quote::quote;
 
 use crate::tests::helpers::{assert_transformations, assert_transformations_same_output};
@@ -457,7 +456,7 @@ fn should_apply_split_single() {
         (
             quote! { @[(("get-one" two - "3-4" Struct) | split{"-"} | lower | join{'_'}) -by-id] },
             "\"get_onetwo_3_4struct-by-id\"",
-        ),        
+        ),
         (
             quote! { @[(("get-" Test - Struct) | split{"-"} | lower | join{"_"}) -by-id] },
             "\"get_test_struct-by-id\"",
@@ -465,12 +464,11 @@ fn should_apply_split_single() {
         (
             quote! { @[(("get-" Test - Struct) | split{6} | lower | join{"_"})] },
             "\"get-te_st-struct\"",
-        ),        
+        ),
     ];
 
     assert_transformations(arguments);
 }
-
 
 #[test]
 fn should_apply_substr_end_only() {
@@ -556,7 +554,6 @@ fn should_apply_substr_chained() {
     ];
     assert_transformations(arguments);
 }
-
 
 #[test]
 fn should_apply_splice_default_mode_single() {

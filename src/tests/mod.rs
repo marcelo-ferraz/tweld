@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod casing;
 #[cfg(test)]
-mod single;
+mod helpers;
 #[cfg(test)]
 mod list;
 #[cfg(test)]
-mod helpers;
+mod single;
 
 use crate::tests::helpers::{assert_transformations, assert_transformations_same_output};
 use quote::quote;
@@ -157,7 +157,6 @@ fn should_apply_replace() {
 
     assert_transformations(arguments);
 }
-
 
 #[test]
 fn should_ignore_invalid_ident_chars() {
@@ -438,4 +437,3 @@ fn handling_nested_modifiers() {
     )];
     assert_transformations(arguments);
 }
-

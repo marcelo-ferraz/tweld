@@ -1,4 +1,6 @@
 mod modifiers;
+#[cfg(test)]
+mod tests;
 
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitChar, LitStr, Token, bracketed, parenthesized};

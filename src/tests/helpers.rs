@@ -29,14 +29,16 @@ pub fn assert_failure(arguments: Vec<(TokenStream, &'static str)>) {
     for (input, expected) in arguments {
         match scan_tokens(TokenStream::from(input)) {
             Ok(result) => {
-                panic!("This should've failed! {{{result}}}");                
-            },
+                panic!("This should've failed! {{{result}}}");
+            }
             Err(err) => {
                 assert_eq!(
-                    err.to_string(), expected,
-                    "Error didnt match: {{ res: {}, exp: {expected} }}", err.to_string(),
+                    err.to_string(),
+                    expected,
+                    "Error didnt match: {{ res: {}, exp: {expected} }}",
+                    err.to_string(),
                 );
-            },
+            }
         }
     }
 }

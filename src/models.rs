@@ -25,7 +25,7 @@ pub enum Modifier {
     Splice(Output, Option<i32>, Option<i32>, Option<String>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Output {
     Value,
     Removed,
