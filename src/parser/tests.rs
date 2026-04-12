@@ -472,7 +472,7 @@ fn check_depth(node: &WeldToken, depth: isize) -> (String, isize) {
         WeldToken::Plain(val) => (val.clone(), depth + 1),
         WeldToken::ConcatGroup(vec) => check_depth(vec.get(0).unwrap(), depth + 1),
         WeldToken::ListGroup(vec) => check_depth(vec.get(0).unwrap(), depth + 1),
-        WeldToken::Modify(_, _) => panic!("The test doesnt cover this case")
+        WeldToken::Modify(_, _) => panic!("The test doesnt cover this case"),
     }
 }
 
@@ -484,7 +484,7 @@ fn test_maximum_depth() {
     input.push_str(&")".repeat(expected_depth as usize));
 
     println!("{input}");
-    
+
     // 0         1         23456789
     // 01234567890123456789012345678901234567890123456789
     //  (((((((((((((((((((some_thing)))))))))))))))))))
@@ -492,7 +492,7 @@ fn test_maximum_depth() {
     let parsed = Parser::parse_str(TweldDsl::parse, &input).unwrap();
 
     let (value, depth) = check_depth(parsed.tokens.get(0).unwrap(), -1);
-       
+
     assert_eq!(value, "some_thing");
     assert_eq!(expected_depth, depth);
 }
@@ -508,10 +508,8 @@ fn test_exceeding_maximum_depth() {
     // 01234567890123456789012345678901234567890123456789
     // ((((((((((((((((((((some_thing))))))))))))))))))))
 
-    let err = Parser::parse_str(TweldDsl::parse, &input)
-        .expect_err("This test expects a failure");
-    
-    
+    let err = Parser::parse_str(TweldDsl::parse, &input).expect_err("This test expects a failure");
+
     assert!(err.to_string().contains("Maximum nesting exceeded"));
 }
 
@@ -522,15 +520,15 @@ fn test_modifier_from_root() {
     let parsed = Parser::parse_str(TweldDsl::parse, &input).unwrap();
 
     let result = parsed.tokens.get(0).unwrap();
-       
-    assert_eq!(parsed.tokens.len(), 1);    
-    assert!(matches!(result, 
+
+    assert_eq!(parsed.tokens.len(), 1);
+    assert!(matches!(result,
         WeldToken::Modify(target, modifiers) if matches!(
             modifiers.get(0).unwrap(), Modifier::Singular
         ) && matches!(
             &**target, WeldToken::Plain(val) if val == "name"
         )
-    ));    
+    ));
 }
 
 #[test]
@@ -540,7 +538,7 @@ fn test_modifier_from_single_item_group() {
     let parsed = Parser::parse_str(TweldDsl::parse, &input).unwrap();
 
     let result = parsed.tokens.get(0).unwrap();
-    
+
     println!("result: {result:?}");
 
     let WeldToken::ConcatGroup(result) = result else {
@@ -549,14 +547,14 @@ fn test_modifier_from_single_item_group() {
 
     let result = result.get(0).unwrap();
 
-    assert_eq!(parsed.tokens.len(), 1);    
-    assert!(matches!(result, 
+    assert_eq!(parsed.tokens.len(), 1);
+    assert!(matches!(result,
         WeldToken::Modify(target, modifiers) if matches!(
             modifiers.get(0).unwrap(), Modifier::Singular
         ) && matches!(
             &**target, WeldToken::Plain(val) if val == "name"
         )
-    ));    
+    ));
 }
 
 #[test]
@@ -575,22 +573,21 @@ fn test_modifier_from_list_group() {
 
     let result = result.get(0).unwrap();
 
-    assert_eq!(parsed.tokens.len(), 1);    
-    assert!(matches!(result, 
+    assert_eq!(parsed.tokens.len(), 1);
+    assert!(matches!(result,
         WeldToken::Modify(target, modifiers) if matches!(
             modifiers.get(0).unwrap(), Modifier::Singular
         ) && matches!(
             &**target, WeldToken::Plain(val) if val == "name"
         )
-    ));    
+    ));
 }
 
 #[test]
 fn test_modifier_without_target() {
     let input = "[| singular]";
 
-    let error = Parser::parse_str(TweldDsl::parse, &input)
-        .expect_err("This test expects an error");
+    let error = Parser::parse_str(TweldDsl::parse, &input).expect_err("This test expects an error");
 
     assert!(error.to_string().contains("Modifiers need a target"));
 }

@@ -6,7 +6,7 @@ use crate::builder::build_string;
 use crate::models::RenderType;
 use crate::parser::TweldDsl;
 
-pub(crate) const IDENT_EMPTY_MSG: &'static str = "The identifier is an empty string!";
+pub(crate) const IDENT_EMPTY_MSG: &str = "The identifier is an empty string!";
 
 pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
     let mut output = Vec::new();

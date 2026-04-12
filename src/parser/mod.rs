@@ -8,7 +8,7 @@ use syn::{Ident, LitChar, LitStr, Token, bracketed, parenthesized};
 use crate::models::{RenderType, TokenParserState, WeldToken};
 use crate::parser::modifiers::parse_modifiers;
 
-pub(crate)  const MAX_DEPTH: isize = 20;
+pub(crate) const MAX_DEPTH: isize = 20;
 
 #[derive(Debug)]
 pub struct TweldDsl {
@@ -114,7 +114,7 @@ fn parse_stream(
                             let Some(last) = words.pop() else {
                                 return Err(syn::Error::new(
                                     input.span(),
-                                    "There was an error when trying to start modifiers..."
+                                    "There was an error when trying to start modifiers...",
                                 ));
                             };
 
