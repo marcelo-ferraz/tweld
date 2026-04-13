@@ -374,7 +374,57 @@ weld! {
  
 The modifiers don't need to be tidy on the inside. They just need to produce something valid on the outside — which is, when you think about it, a reasonable standard to hold most things to.
  
----
+## Some real world examples
+
+### Defining a function for update by id
+In this example I want to try to fix table names like UsersProfiles, or TagNames to use them to form identifiers in a way that rust needs and literals that are more human readable.
+
+```rust
+#[macro_export]
+macro_rules! define_update_by_id {
+    ($user_table:ident as $model:ident values $changesetTp:ident) => {
+        tweld::weld! {
+            #[doc = @["Updates the " ($user_table | split{'_'} | singular | join{' '} ) ", using the id as the filter."]]
+            pub fn @[update_ ($user_table | split{'_'} | singular | join{'_'} ) _by_id](id: i64, change_set: $changesetTp) -> anyhow::Result<$model> {
+                log::info!(@["Saving " ($user_table | split{'_'} | singular | join{' '} ) " {:?}..."], change_set);                
+                crate::update!($user_table as $model values change_set by id)
+            }
+        }
+    };
+
+    ($($user_table:ident as $model:ident values $changesetTp:ident),* $(,)?) => {
+        $(define_update_by_id!($user_table:ident as $model:ident values $changesetTp:ident))*
+    }
+}
+```
+
+And this macro can be used this way:
+
+```rust
+define_update_by_id!(
+    users as User values UserChangeSet,
+    users_profiles as UserProfile values UserProfileChangeSet
+);
+```
+> This flow: `$user_table | split{'_'} | singular | join{'_'} )`, will process the partial identifier this way:     
+`UsersProfiles` -> `[users profiles]` -> `[user profile]` -> `user_profile`
+
+```rust
+#[doc = "Updates the user profile, using the id as the filter."]
+pub fn update_user_profile_by_id(id:i64,change_set:UserChangeSet) -> anyhow::Result<User>{
+    log::info!("Saving user profile, {:?}",change_set);
+    crate::update!(users as User values change_set by id)
+}
+
+#[doc = "Updates the user, using the id as the filter."]
+pub fn update_user_by_id(id:i64,change_set:UserChangeSet) -> anyhow::Result<User>{
+    log::info!("Saving user, {:?}",change_set);
+    crate::update!(users as User values change_set by id)
+}
+
+```
+
+
  
 ## Status
  
