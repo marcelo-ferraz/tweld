@@ -8,30 +8,30 @@ use crate::models::{Modifier, Output, WeldToken};
 pub fn build_string(parts: Vec<WeldToken>) -> String {
     let mut result = String::new();
     for part in parts {
-        let partial = build_from_part(part);
+        let partial = build_from_token(part);
         result.push_str(&partial);
     }
 
     result.replace("r#", "")
 }
 
-fn build_from_part(part: WeldToken) -> String {
+fn build_from_token(part: WeldToken) -> String {
     match part {
         WeldToken::Plain(value) => value.clone(),
         WeldToken::ConcatGroup(grouped_parts) => grouped_parts
             .iter()
-            .map(|sub_part| build_from_part(sub_part.clone()))
+            .map(|sub_part| build_from_token(sub_part.clone()))
             .collect::<String>(),
         WeldToken::ListGroup(grouped_parts) => grouped_parts
             .iter()
-            .map(|sub_part| build_from_part(sub_part.clone()))
+            .map(|sub_part| build_from_token(sub_part.clone()))
             .collect::<String>(),
         WeldToken::Modify(target, modifiers) => match *target {
             WeldToken::Plain(value) => modify_single(value, &modifiers),
             WeldToken::ListGroup(items) => {
                 let value = items
                     .iter()
-                    .map(|sub_part| build_from_part(sub_part.clone()))
+                    .map(|sub_part| build_from_token(sub_part.clone()))
                     .collect::<Vec<String>>();
 
                 modify_list(value, &modifiers)
@@ -39,13 +39,13 @@ fn build_from_part(part: WeldToken) -> String {
             WeldToken::ConcatGroup(grouped_parts) => {
                 let value = grouped_parts
                     .iter()
-                    .map(|sub_part| build_from_part(sub_part.clone()))
+                    .map(|sub_part| build_from_token(sub_part.clone()))
                     .collect::<String>();
 
                 modify_single(value, &modifiers)
             }
             WeldToken::Modify(token_part, nested_modifiers) => {
-                let nested_result = modify_single(build_from_part(*token_part), &nested_modifiers);
+                let nested_result = modify_single(build_from_token(*token_part), &nested_modifiers);
 
                 modify_single(nested_result, &modifiers)
             }
@@ -58,6 +58,7 @@ fn modify_single(value: String, modifiers: &Vec<Modifier>) -> String {
 
     modify_list(values, modifiers)
 }
+
 fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
     for modified in modifiers {
         let list_mode = values.len() > 1;
