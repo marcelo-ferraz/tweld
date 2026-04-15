@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use heck::{
     ToKebabCase, ToLowerCamelCase, ToPascalCase, ToShoutyKebabCase, ToShoutySnakeCase, ToSnakeCase,
     ToTitleCase, ToTrainCase,
@@ -166,34 +168,32 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                 values.clear();
                 values.push(result);                
             }
-            Modifier::PadStart(width, pat) =>{ 
-                values.iter_mut().for_each(| val| {
-                    let width: i32 = (*width as i32) - (val.len() as i32);
+            Modifier::PadStart(total_width, pat) =>{ 
+                values.iter_mut().for_each(| val| {                    
+                    let width: i32 = *total_width as i32 - (val.len() as i32);                    
+                    // let width: i32 = (max(*width, pat.len())/pat.len()) as i32 - (val.len() as i32);
                     if width <= 0 { return; }
-                    
-                    // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
                     // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
                     // per ex:
                     //------------------------------------------------01234567890
                     // oneStr | padstart { '|_|', 8 } should render  "|_oneStr"    -> remaining padding is 2, as  8 - 6 = 2
-                    // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5
-                    let mut padding = pat.repeat(width as usize)[0..(width as usize)].to_string();
+                    // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5                    
+                    let mut padding = pat.repeat(max(*total_width, pat.len())/pat.len())[0..(width as usize)].to_string();
                     padding.push_str(&val);
                     val.clear();
                     val.push_str(&padding);    
                 })
             },
-            Modifier::PadEnd(width, pat) => {
+            Modifier::PadEnd(total_width, pat) => {
                 values.iter_mut().for_each(| val| {
-                    let width: i32 = (*width as i32) - (val.len() as i32);
+                    let width: i32 = (max(*total_width, pat.len())/pat.len()) as i32 - (val.len() as i32);
                     if width <= 0 { return; }
-                    // TODO: use (width / pat.len) or (width / pat.len) for the repeat, to avoid large truncates
                     // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
                     // per ex:
                     //----------------------------------------------01234567890
                     // oneStr | padend { '|_|', 8 } should render  "oneStr|_"    -> remaining padding is 2, as  8 - 6 = 2
                     // oneStr | padend { '|_|', 11 } should render "oneStr|_||_" -> remaining padding is 5, as 11 - 6 = 5
-                    val.push_str(&pat.repeat(width as usize)[0..(width as usize)]);
+                    val.push_str(&pat.repeat(max(*total_width, pat.len())/pat.len())[0..(width as usize)]);
                 });
             }
             Modifier::Slice(start, end) => {

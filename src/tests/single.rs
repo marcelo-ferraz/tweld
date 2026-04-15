@@ -20,11 +20,11 @@ fn should_apply_pad_on_left() {
             "\"-----get-Test-Struct\"",
         ),
         (
-            quote! { @[(get "-" Test-Struct) | padstart{20, "-"} | lower ] },
+            quote! { @[(get "-" Test-Struct) | padstart{20, "|_|"} | lower ] },
             /*
             0         1         2         3
             0123456789012345678901234567890 */
-            "\"-----get-test-struct\"",
+            "\"|_||_|get-test-struct\"",
         ),
         (
             quote! { @[(get_ Test_Struct) | padstart{5, "_"}] },
