@@ -24,7 +24,7 @@ fn should_apply_pad_on_left() {
             /*
             0         1         2         3
             0123456789012345678901234567890 */
-            "\"|_||_|get-test-struct\"",
+            "\"|_||_get-test-struct\"",
         ),
         (
             quote! { @[(get_ Test_Struct) | padstart{5, "_"}] },
