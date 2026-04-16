@@ -61,26 +61,32 @@ fn modify_single(value: String, modifiers: &Vec<Modifier>) -> String {
     modify_list(values, modifiers)
 }
 
-
 fn each(values: &mut Vec<String>, f: impl Fn(&str) -> String) {
-    values.iter_mut().for_each(|val| { *val = f(val); });
+    values.iter_mut().for_each(|val| {
+        *val = f(val);
+    });
 }
 
 fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
     for modified in modifiers {
         let list_mode = values.len() > 1;
-        
+
         match modified {
             Modifier::Singular => {
-                values.iter_mut()
+                values
+                    .iter_mut()
                     .filter(|val| val.ends_with('s'))
-                    .for_each(|val| { val.pop(); });
-                
+                    .for_each(|val| {
+                        val.pop();
+                    });
             }
-            Modifier::Plural => {                
-                values.iter_mut()
+            Modifier::Plural => {
+                values
+                    .iter_mut()
                     .filter(|val| !val.ends_with('s'))
-                    .for_each(|val| { val.push('s'); });
+                    .for_each(|val| {
+                        val.push('s');
+                    });
             }
             Modifier::Lowercase => each(&mut values, str::to_lowercase),
             Modifier::Uppercase => each(&mut values, str::to_uppercase),
@@ -100,10 +106,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
             }),
             Modifier::Reverse => {
                 if !list_mode {
-                    each(
-                        &mut values, 
-                        |val| val.chars().rev().collect::<String>()
-                    );
+                    each(&mut values, |val| val.chars().rev().collect::<String>());
                     continue;
                 }
                 values.reverse();
@@ -132,11 +135,11 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
 
                     continue;
                 }
-                
+
                 values = values
                     .iter()
                     .flat_map(|v| v.split(pat).map(str::to_string))
-                    .collect();                
+                    .collect();
             }
             Modifier::SplitAt(mid) => {
                 if list_mode {
@@ -155,8 +158,9 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
 
                     continue;
                 }
-              
-                values = values.iter()
+
+                values = values
+                    .iter()
                     .flat_map(|v| {
                         let (left, right) = v.split_at(*mid);
                         [left.to_string(), right.to_string()]
@@ -166,34 +170,43 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
             Modifier::Join(sep) => {
                 let result = values.join(sep);
                 values.clear();
-                values.push(result);                
+                values.push(result);
             }
-            Modifier::PadStart(total_width, pat) =>{ 
-                values.iter_mut().for_each(| val| {                    
-                    let width: i32 = *total_width as i32 - (val.len() as i32);                    
+            Modifier::PadStart(total_width, pat) => {
+                values.iter_mut().for_each(|val| {
+                    let width: i32 = *total_width as i32 - (val.len() as i32);
                     // let width: i32 = (max(*width, pat.len())/pat.len()) as i32 - (val.len() as i32);
-                    if width <= 0 { return; }
+                    if width <= 0 {
+                        return;
+                    }
                     // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
                     // per ex:
                     //------------------------------------------------01234567890
                     // oneStr | padstart { '|_|', 8 } should render  "|_oneStr"    -> remaining padding is 2, as  8 - 6 = 2
-                    // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5                    
-                    let mut padding = pat.repeat(max(*total_width, pat.len())/pat.len())[0..(width as usize)].to_string();
+                    // oneStr | padstart { '|_|', 11 } should render "|_||_oneStr" -> remaining padding is 5, as 11 - 6 = 5
+                    let mut padding = pat.repeat(max(*total_width, pat.len()) / pat.len())
+                        [0..(width as usize)]
+                        .to_string();
                     padding.push_str(&val);
                     val.clear();
-                    val.push_str(&padding);    
+                    val.push_str(&padding);
                 })
-            },
+            }
             Modifier::PadEnd(total_width, pat) => {
-                values.iter_mut().for_each(| val| {
-                    let width: i32 = (max(*total_width, pat.len())/pat.len()) as i32 - (val.len() as i32);
-                    if width <= 0 { return; }
+                values.iter_mut().for_each(|val| {
+                    let width: i32 =
+                        (max(*total_width, pat.len()) / pat.len()) as i32 - (val.len() as i32);
+                    if width <= 0 {
+                        return;
+                    }
                     // this can happen when the user adds a pattern that is long, like `|_|` per instance and max remaning width for padding is 2
                     // per ex:
                     //----------------------------------------------01234567890
                     // oneStr | padend { '|_|', 8 } should render  "oneStr|_"    -> remaining padding is 2, as  8 - 6 = 2
                     // oneStr | padend { '|_|', 11 } should render "oneStr|_||_" -> remaining padding is 5, as 11 - 6 = 5
-                    val.push_str(&pat.repeat(max(*total_width, pat.len())/pat.len())[0..(width as usize)]);
+                    val.push_str(
+                        &pat.repeat(max(*total_width, pat.len()) / pat.len())[0..(width as usize)],
+                    );
                 });
             }
             Modifier::Slice(start, end) => {
@@ -261,7 +274,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     }
                     val
                 });
-            }            
+            }
         }
     }
     values.join("")
