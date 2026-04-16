@@ -61,7 +61,7 @@ fn modify_single(value: String, modifiers: &Vec<Modifier>) -> String {
     modify_list(values, modifiers)
 }
 
-fn each(values: &mut Vec<String>, f: impl Fn(&str) -> String) {
+fn each(values: &mut [String], f: impl Fn(&str) -> String) {
     values.iter_mut().for_each(|val| {
         *val = f(val);
     });
@@ -187,7 +187,7 @@ fn modify_list(mut values: Vec<String>, modifiers: &Vec<Modifier>) -> String {
                     let mut padding = pat.repeat(max(*total_width, pat.len()) / pat.len())
                         [0..(width as usize)]
                         .to_string();
-                    padding.push_str(&val);
+                    padding.push_str(val);
                     val.clear();
                     val.push_str(&padding);
                 })
