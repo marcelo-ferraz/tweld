@@ -6,6 +6,8 @@ use crate::builder::build_string;
 use crate::models::RenderType;
 use crate::parser::TweldDsl;
 
+pub(crate) const IDENT_EMPTY_MSG: &str = "The identifier is an empty string!";
+
 pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
     let mut output = Vec::new();
     let mut tokens = input.into_iter().peekable();
@@ -27,11 +29,16 @@ pub fn scan_tokens(input: TokenStream) -> syn::Result<TokenStream> {
 
                         let dsl: TweldDsl = parse2(bracket_group.stream())?;
 
-                        let result = build_string(dsl.parts);
+                        let result = build_string(dsl.tokens);
 
                         match dsl.render_type {
                             RenderType::Identifier => {
                                 let result = result.replace(" ", "");
+
+                                if result.is_empty() {
+                                    return Err(syn::Error::new(span, IDENT_EMPTY_MSG));
+                                }
+
                                 let identifier =
                                     parse_str::<proc_macro2::Ident>(&result).or_else(|_| {
                                         parse_str::<proc_macro2::Ident>(&format!("r#{result}"))

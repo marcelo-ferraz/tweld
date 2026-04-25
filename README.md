@@ -69,7 +69,7 @@ Tokens inside `()` are concatenated into a single value before any modifiers are
  
 ```rust
 weld!(
-    const @[(super duper) | snek] = "";
+    const @[(_super Duper) | snek | substr{1,}] = "";
     // renders: const super_duper = "";
 );
 ```
@@ -182,7 +182,7 @@ weld!(const @[(no lemon no melon) | reverse | snek] = "";);
 Creates a new value by repeating the current value `n` times.
  
 ```rust
-weld!(const rawhide = @[",rolling' " | timess{3} | substr{1}]);
+weld!(const rawhide = @[",rolling' " | times{3} | substr{1}]);
 // renders: const rawhide = "rolling' ,rolling' ,rolling' ";
 ```
  
@@ -276,7 +276,7 @@ weld!(const val = @["get_" Test_Struct | slice{-4, -6}]);
  
 ---
  
-### `splice{mode, start?, end?, replacement?}`
+### `splice{mode?, start?, end?, replacement?}`
  
 The most involved modifier. Removes a range from the value, optionally replaces it with new content, and returns either the modified value or the removed portion — depending on the mode.
  
@@ -374,11 +374,129 @@ weld! {
  
 The modifiers don't need to be tidy on the inside. They just need to produce something valid on the outside — which is, when you think about it, a reasonable standard to hold most things to.
  
----
+## Some real world examples
+
+### Defining "update by id" functions
+In this example I want to try to fix table names like UsersProfiles, or TagNames to use them to form identifiers in a way that rust needs and literals that are more human readable.
+
+```rust
+#[macro_export]
+macro_rules! define_update_by_id {
+    ($user_table:ident as $model:ident values $changesetTp:ident) => {
+        tweld::weld! {
+            #[doc = @["Updates the " ($user_table | split{'_'} | singular | join{' '} ) ", using the id as the filter."]]
+            pub fn @[update_ ($user_table | split{'_'} | singular | join{'_'} ) _by_id](id: i64, change_set: $changesetTp) -> anyhow::Result<$model> {
+                log::info!(@["Saving " ($user_table | split{'_'} | singular | join{' '} ) " {:?}..."], change_set);                
+                crate::update!($user_table as $model values change_set by id)
+            }
+        }
+    };
+
+    ($($user_table:ident as $model:ident values $changesetTp:ident),* $(,)?) => {
+        $(define_update_by_id!($user_table:ident as $model:ident values $changesetTp:ident))*
+    }
+}
+```
+
+And this macro can be used this way:
+
+```rust
+define_update_by_id!(
+    users as User values UserChangeSet,
+    users_profiles as UserProfile values UserProfileChangeSet
+);
+```
+> This flow: `$user_table | split{'_'} | singular | join{'_'} )`, will process the partial identifier this way:     
+`UsersProfiles` -> `[users profiles]` -> `[user profile]` -> `user_profile`
+
+```rust
+#[doc = "Updates the user profile, using the id as the filter."]
+pub fn update_user_profile_by_id(id:i64,change_set:UserChangeSet) -> anyhow::Result<User>{
+    log::info!("Saving user profile, {:?}",change_set);
+    crate::update!(users as User values change_set by id)
+}
+
+#[doc = "Updates the user, using the id as the filter."]
+pub fn update_user_by_id(id:i64,change_set:UserChangeSet) -> anyhow::Result<User>{
+    log::info!("Saving user, {:?}",change_set);
+    crate::update!(users as User values change_set by id)
+}
+
+```
+
+### Defining connection structs
+In one of my projects I need to have [connection](https://www.apollographql.com/blog/explaining-graphql-connections) structs for pagination. Since this case was a bit straight forward, I created a macro to define the connection type based on a model type.
+
+```rust
+    ($($ty:ty),* $(,)?) => {
+        $(
+            tweld::weld! {
+                #[derive(SimpleObject)]
+                #[graphql(complex)]
+                pub struct @[($ty Connection)|pascal] {
+                    pub items: Vec<$ty>,
+                    pub page_index: i32,
+                    pub page_size: i32,
+                    pub total_count: i64,
+                }
+            }
+
+            tweld::weld! {
+                #[ComplexObject]
+                impl @[($ty Connection)|pascal] {
+                    async fn total_pages(&self) -> i64 {
+                        let result: f64 = (self.total_count as f64 / (self.page_size as f64)) as f64;
+                        result.ceil() as i64
+                    }
+
+                    async fn has_next(&self) -> bool {
+                        self.total_count - ((self.page_index * self.page_size) as i64) > 0
+                    }
+    
+                    async fn has_previous(&self) -> bool {
+                        self.page_index > 0
+                    }
+                } 
+            }
+        )*
+    };
+```
+When used like this:
+```rust
+define_connections!(User);
+```
+
+Will generate:
+```rust
+#[derive(SimpleObject)]
+#[graphql(complex)]
+pub struct UserConnection {
+    pub items:Vec<User>,
+    pub page_index:i32,
+    pub page_size:i32,
+    pub total_count:i64,
+}
+
+#[ComplexObject]
+impl UserConnection {
+    async fn total_pages(&self) -> i64 {
+        let result:f64 = (self.total_count as f64/(self.page_size as f64))as f64;
+        result.ceil() as i64
+    }
+    
+    async fn has_next(&self) -> bool {
+        self.total_count - ((self.page_index*self.page_size) as i64)>0
+    }
+
+    async fn has_previous(&self) -> bool {
+        self.page_index > 0
+    }
+}
+```
  
 ## Status
  
-Tweld is currently in **alpha (RC2)**. The feature set for `1.0` is complete and testing is still an ongoing endeavor. The API may still shift before stabilisation.
+Tweld is currently in version `1.0`. Testing is still an ongoing endeavor, some will say is a mess, I call it home. I will aim for the api to be stable, respecting semantic versioning.
  
 Bug reports, feature requests, and strong opinions about identifier naming are all welcome.
  

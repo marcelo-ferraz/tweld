@@ -1,26 +1,29 @@
 mod modifiers;
+#[cfg(test)]
+mod tests;
 
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitChar, LitStr, Token, bracketed, parenthesized};
 
-use crate::models::{RenderType, TokenParserState, TokenPart};
+use crate::models::{RenderType, TokenParserState, WeldToken};
 use crate::parser::modifiers::parse_modifiers;
 
-const MAX_DEPTH: usize = 20;
+pub(crate) const MAX_DEPTH: isize = 20;
 
+#[derive(Debug)]
 pub struct TweldDsl {
     pub render_type: RenderType,
-    pub parts: Vec<TokenPart>,
+    pub tokens: Vec<WeldToken>,
 }
 
 impl Parse for TweldDsl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut dsl = TweldDsl {
             render_type: RenderType::Identifier,
-            parts: Vec::new(),
+            tokens: Vec::new(),
         };
 
-        dsl = parse_stream(input, dsl, TokenParserState::InsideBrackets, 0usize)?;
+        dsl = parse_stream(input, dsl, TokenParserState::Root, -1isize)?;
 
         Ok(dsl)
     }
@@ -30,18 +33,17 @@ fn parse_stream(
     input: &syn::parse::ParseBuffer<'_>,
     mut dsl: TweldDsl,
     state: TokenParserState,
-    mut depth: usize,
+    mut depth: isize,
 ) -> syn::Result<TweldDsl> {
-    depth += 1;
-
     if depth >= MAX_DEPTH {
-        return Err(syn::Error::new(input.span(), "Maximum nesting reached!"));
+        return Err(syn::Error::new(input.span(), "Maximum nesting exceeded!"));
     }
+    depth += 1;
 
     let mut words: Vec<String> = vec![];
     while !input.is_empty() {
         match state {
-            TokenParserState::InsideBrackets => {
+            TokenParserState::Root => {
                 if input.peek(syn::token::Paren) {
                     parse_concat_group(input, &mut dsl, depth)?;
 
@@ -61,33 +63,33 @@ fn parse_stream(
 
                 if input.peek(syn::Ident) {
                     let result = input.parse::<Ident>()?.to_string();
-                    dsl.parts.push(TokenPart::Plain(result));
+                    dsl.tokens.push(WeldToken::Plain(result));
                     continue;
                 }
 
                 if input.peek(syn::LitStr) {
                     let result = input.parse::<LitStr>()?.value();
                     dsl.render_type = RenderType::StringLiteral;
-                    dsl.parts.push(TokenPart::Plain(result));
+                    dsl.tokens.push(WeldToken::Plain(result));
                     continue;
                 }
 
                 if input.peek(syn::LitChar) {
                     let result = input.parse::<LitChar>()?.value().to_string();
                     dsl.render_type = RenderType::StringLiteral;
-                    dsl.parts.push(TokenPart::Plain(result));
+                    dsl.tokens.push(WeldToken::Plain(result));
                     continue;
                 }
 
                 if input.peek(Token![-]) {
                     input.parse::<Token![-]>()?;
-                    dsl.parts.push(TokenPart::Plain("-".to_string()));
+                    dsl.tokens.push(WeldToken::Plain("-".to_string()));
                     continue;
                 }
 
                 if input.peek(Token![_]) {
                     input.parse::<Token![_]>()?;
-                    dsl.parts.push(TokenPart::Plain("_".to_string()));
+                    dsl.tokens.push(WeldToken::Plain("_".to_string()));
                     continue;
                 }
 
@@ -110,12 +112,17 @@ fn parse_stream(
                     if input.peek(Token![|]) {
                         if !words.is_empty() {
                             let Some(last) = words.pop() else {
-                                todo!();
+                                return Err(syn::Error::new(
+                                    input.span(),
+                                    "There was an error when trying to start modifiers...",
+                                ));
                             };
 
-                            dsl.parts.push(TokenPart::Plain(words.join("")));
-                            words.clear();
-                            dsl.parts.push(TokenPart::Plain(last));
+                            if !words.is_empty() {
+                                dsl.tokens.push(WeldToken::Plain(words.join("")));
+                                words.clear();
+                            }
+                            dsl.tokens.push(WeldToken::Plain(last));
                         }
 
                         dsl = parse_stream(input, dsl, TokenParserState::Modifiers, depth)?;
@@ -161,13 +168,13 @@ fn parse_stream(
                 }
             }
             TokenParserState::Modifiers => {
-                let Some(target) = dsl.parts.pop() else {
+                let Some(target) = dsl.tokens.pop() else {
                     return Err(syn::Error::new(input.span(), "Modifiers need a target"));
                 };
 
                 let modifiers = parse_modifiers(input)?;
-                dsl.parts
-                    .push(TokenPart::Modified(Box::new(target), modifiers));
+                dsl.tokens
+                    .push(WeldToken::Modify(Box::new(target), modifiers));
             }
         }
 
@@ -187,9 +194,9 @@ fn parse_words(dsl: &mut TweldDsl, state: &TokenParserState, words: &mut Vec<Str
         TokenParserState::InsideGroup(single_value) if !single_value => {
             words
                 .iter()
-                .for_each(|word| dsl.parts.push(TokenPart::Plain(word.clone())));
+                .for_each(|word| dsl.tokens.push(WeldToken::Plain(word.clone())));
         }
-        _ => dsl.parts.push(TokenPart::Plain(words.join(""))),
+        _ => dsl.tokens.push(WeldToken::Plain(words.join(""))),
     }
 
     words.clear();
@@ -198,13 +205,13 @@ fn parse_words(dsl: &mut TweldDsl, state: &TokenParserState, words: &mut Vec<Str
 fn parse_concat_group(
     input: &syn::parse::ParseBuffer<'_>,
     dsl: &mut TweldDsl,
-    depth: usize,
+    depth: isize,
 ) -> Result<(), syn::Error> {
     let group;
     parenthesized!(group in input);
     let mut grouped_dsl = TweldDsl {
         render_type: dsl.render_type.clone(),
-        parts: vec![],
+        tokens: vec![],
     };
     grouped_dsl = parse_stream(
         &group,
@@ -213,7 +220,7 @@ fn parse_concat_group(
         depth,
     )?;
 
-    dsl.parts.push(TokenPart::ConcatGroup(grouped_dsl.parts));
+    dsl.tokens.push(WeldToken::ConcatGroup(grouped_dsl.tokens));
 
     if let RenderType::StringLiteral = grouped_dsl.render_type {
         dsl.render_type = RenderType::StringLiteral;
@@ -225,13 +232,13 @@ fn parse_concat_group(
 fn parse_list_group(
     input: &syn::parse::ParseBuffer<'_>,
     dsl: &mut TweldDsl,
-    depth: usize,
+    depth: isize,
 ) -> Result<(), syn::Error> {
     let group;
     bracketed!(group in input);
     let mut grouped_dsl = TweldDsl {
         render_type: dsl.render_type.clone(),
-        parts: vec![],
+        tokens: vec![],
     };
     grouped_dsl = parse_stream(
         &group,
@@ -240,7 +247,7 @@ fn parse_list_group(
         depth,
     )?;
 
-    dsl.parts.push(TokenPart::ListGroup(grouped_dsl.parts));
+    dsl.tokens.push(WeldToken::ListGroup(grouped_dsl.tokens));
 
     if let RenderType::StringLiteral = grouped_dsl.render_type {
         dsl.render_type = RenderType::StringLiteral;
