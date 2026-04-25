@@ -24,7 +24,7 @@ Add it to your `Cargo.toml`:
  
 ```toml
 [dependencies]
-tweld = "0.1.0-rc.2"  # check crates.io for the latest
+tweld = "1.0.0"  # check crates.io for the latest
 ```
  
 Or, if you prefer:
