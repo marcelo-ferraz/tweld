@@ -39,7 +39,7 @@ dependencies = [
 
 [[package]]
 name = "tweld"
-version = "0.3.5-alpha.rc.3"
+version = "1.0.0"
 dependencies = [
  "heck",
  "proc-macro2",

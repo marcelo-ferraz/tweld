@@ -376,7 +376,7 @@ The modifiers don't need to be tidy on the inside. They just need to produce som
  
 ## Some real world examples
 
-### Defining a function for update by id
+### Defining "update by id" functions
 In this example I want to try to fix table names like UsersProfiles, or TagNames to use them to form identifiers in a way that rust needs and literals that are more human readable.
 
 ```rust
@@ -424,11 +424,79 @@ pub fn update_user_by_id(id:i64,change_set:UserChangeSet) -> anyhow::Result<User
 
 ```
 
+### Defining connection structs
+In one of my projects I need to have [connection](https://www.apollographql.com/blog/explaining-graphql-connections) structs for pagination. Since this case was a bit straight forward, I created a macro to define the connection type based on a model type.
 
+```rust
+    ($($ty:ty),* $(,)?) => {
+        $(
+            tweld::weld! {
+                #[derive(SimpleObject)]
+                #[graphql(complex)]
+                pub struct @[($ty Connection)|pascal] {
+                    pub items: Vec<$ty>,
+                    pub page_index: i32,
+                    pub page_size: i32,
+                    pub total_count: i64,
+                }
+            }
+
+            tweld::weld! {
+                #[ComplexObject]
+                impl @[($ty Connection)|pascal] {
+                    async fn total_pages(&self) -> i64 {
+                        let result: f64 = (self.total_count as f64 / (self.page_size as f64)) as f64;
+                        result.ceil() as i64
+                    }
+
+                    async fn has_next(&self) -> bool {
+                        self.total_count - ((self.page_index * self.page_size) as i64) > 0
+                    }
+    
+                    async fn has_previous(&self) -> bool {
+                        self.page_index > 0
+                    }
+                } 
+            }
+        )*
+    };
+```
+When used like this:
+```rust
+define_connections!(User);
+```
+
+Will generate:
+```rust
+#[derive(SimpleObject)]
+#[graphql(complex)]
+pub struct UserConnection {
+    pub items:Vec<User>,
+    pub page_index:i32,
+    pub page_size:i32,
+    pub total_count:i64,
+}
+
+#[ComplexObject]
+impl UserConnection {
+    async fn total_pages(&self) -> i64 {
+        let result:f64 = (self.total_count as f64/(self.page_size as f64))as f64;
+        result.ceil() as i64
+    }
+    
+    async fn has_next(&self) -> bool {
+        self.total_count - ((self.page_index*self.page_size) as i64)>0
+    }
+
+    async fn has_previous(&self) -> bool {
+        self.page_index > 0
+    }
+}
+```
  
 ## Status
  
-Tweld is currently in **alpha (RC3)**. The feature set for `1.0` is complete and testing is still an ongoing endeavor, some will say is a mess, I call it home. The API may still shift before stabilisation.
+Tweld is currently in version `1.0`. Testing is still an ongoing endeavor, some will say is a mess, I call it home. I will aim for the api to be stable, respecting semantic versioning.
  
 Bug reports, feature requests, and strong opinions about identifier naming are all welcome.
  
